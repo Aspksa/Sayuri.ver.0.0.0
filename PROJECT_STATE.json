@@ -2,11 +2,11 @@
   "schema_version": 1,
   "project": "Sayuri Yukishiro",
   "repository": "Aspksa/Sayuri.ver.0.0.0",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "development_version": "0.2.0",
   "core_version": "0.1.0",
   "stage": "launcher-ux",
-  "status": "in_progress",
+  "status": "completed",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> sayuri_yukishiro.main",
   "platform": {
     "primary": "Windows",
@@ -79,5 +79,22 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.1.1 Launcher status UX: add JSON diagnostics output, a shared status glyph language with ASCII fallback, step indicators and a ready panel with the site address."
+  "next_action": "v0.2.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown.",
+  "console": {
+    "glyph_sets": [
+      "unicode",
+      "ascii"
+    ],
+    "states": [
+      "ok",
+      "warn",
+      "bad",
+      "info",
+      "step"
+    ],
+    "color_policy": "terminal only; NO_COLOR and SAYURI_COLOR respected",
+    "ascii_fallback": "stream encoding capability, -Ascii switch or SAYURI_ASCII",
+    "launcher_rendering": "native PowerShell colors driven by --preflight --format json",
+    "module": "src/sayuri_yukishiro/console.py"
+  }
 }

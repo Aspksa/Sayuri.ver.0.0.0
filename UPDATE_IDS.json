@@ -17,21 +17,8 @@
     "ARCH": "ARCH-0002"
   },
   "active_development": {
-    "version": "v0.1.1",
-    "status": "in_progress",
-    "reserved": [
-      "CHG-0017",
-      "FEAT-0016",
-      "CHG-0018",
-      "IMP-0001",
-      "CHG-0019",
-      "IMP-0002",
-      "CHG-0020",
-      "IMP-0003",
-      "CHG-0021",
-      "IMP-0004",
-      "CHG-0022",
-      "IMP-0005"
-    ]
+    "version": "v0.2.0",
+    "status": "planned",
+    "reserved": []
   }
 }
