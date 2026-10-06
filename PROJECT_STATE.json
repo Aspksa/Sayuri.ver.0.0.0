@@ -5,8 +5,8 @@
   "version": "0.1.1",
   "development_version": "0.2.0",
   "core_version": "0.1.0",
-  "stage": "launcher-ux",
-  "status": "completed",
+  "stage": "tray-mode",
+  "status": "in_progress",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> sayuri_yukishiro.main",
   "platform": {
     "primary": "Windows",
@@ -79,7 +79,7 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.2.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown.",
+  "next_action": "v0.2.0 Tray mode: run the core as a background process, host a Windows notification-area icon with menu, hide and restore the console window, poll state into the tooltip, and shut down softly by token.",
   "console": {
     "glyph_sets": [
       "unicode",
