@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from . import console
 from .core.runtime import SystemCore
 from .database import CoreDatabase, SCHEMA_VERSION
 from .endpoint import running_instance
@@ -210,15 +211,77 @@ def has_fatal_failures(checks: list[Check]) -> bool:
     return any((not check.ok) and check.severity == FATAL for check in checks)
 
 
-def print_report(checks: list[Check]) -> None:
-    print("Диагностика Sayuri Yukishiro")
-    print("-" * 70)
+def summarize(checks: list[Check]) -> dict[str, int]:
+    passed = sum(1 for check in checks if check.ok)
+    warnings = sum(
+        1 for check in checks if not check.ok and check.severity == WARNING
+    )
+    fatal = sum(1 for check in checks if not check.ok and check.severity == FATAL)
+    return {
+        "total": len(checks),
+        "passed": passed,
+        "warnings": warnings,
+        "fatal": fatal,
+    }
+
+
+def status_kind(check: Check) -> str:
+    """Состояние проверки на языке значков."""
+
+    if check.ok:
+        return console.OK
+    return console.WARN if check.severity == WARNING else console.BAD
+
+
+def report_payload(checks: list[Check]) -> dict[str, Any]:
+    """Машинно-читаемый отчёт: лаунчер рисует статусы сам, не разбирая текст."""
+
+    from .paths import project_version
+    from .version import CORE_VERSION
+
+    return {
+        "project": "Sayuri Yukishiro",
+        "version": project_version(),
+        "core_version": CORE_VERSION,
+        "fatal": has_fatal_failures(checks),
+        "summary": summarize(checks),
+        "checks": [
+            {**check.to_dict(), "kind": status_kind(check)} for check in checks
+        ],
+    }
+
+
+def print_report(checks: list[Check], style: console.ConsoleStyle | None = None) -> None:
+    visual = style or console.ConsoleStyle.detect()
+    width = max((len(check.name) for check in checks), default=10) + 1
+
     for check in checks:
-        if check.ok:
-            mark = "OK"
-        elif check.severity == WARNING:
-            mark = "WARN"
-        else:
-            mark = "FAIL"
-        print(f"[{mark:<4}] {check.name:<13} {check.detail}")
-    print("-" * 70)
+        print(visual.status(status_kind(check), check.name, check.detail, width=width))
+
+    counts = summarize(checks)
+    print(visual.rule())
+    parts = [
+        console.plural(counts["passed"], "проверка", "проверки", "проверок") + " пройдено"
+    ]
+    if counts["warnings"]:
+        parts.append(
+            visual.paint(
+                console.plural(
+                    counts["warnings"], "замечание", "замечания", "замечаний"
+                ),
+                console.WARN,
+            )
+        )
+    if counts["fatal"]:
+        parts.append(
+            visual.paint(
+                console.plural(
+                    counts["fatal"],
+                    "критическая ошибка",
+                    "критические ошибки",
+                    "критических ошибок",
+                ),
+                console.BAD,
+            )
+        )
+    print("  " + " · ".join(parts))

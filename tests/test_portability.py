@@ -165,5 +165,73 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIsNone(pattern.search(self.launcher))
 
 
+class LauncherVisualContractTests(unittest.TestCase):
+    """Статусы лаунчера — часть продукта, их контракт зафиксирован."""
+
+    def setUp(self) -> None:
+        self.launcher = (
+            paths.PROJECT_ROOT / "scripts" / "launcher.ps1"
+        ).read_text(encoding="utf-8")
+
+    def test_rendering_helpers_exist(self) -> None:
+        for helper in (
+            "function Write-Status",
+            "function Write-Panel",
+            "function Write-Step",
+            "function Write-Field",
+            "function Write-Rule",
+            "function Get-Plural",
+        ):
+            with self.subTest(helper):
+                self.assertIn(helper, self.launcher)
+
+    def test_both_glyph_sets_are_declared(self) -> None:
+        self.assertIn('$script:Glyph = @{ ok = "✓"', self.launcher)
+        self.assertIn('$script:Glyph = @{ ok = "+"', self.launcher)
+        self.assertIn('$script:Box = @{ tl = "╭"', self.launcher)
+        self.assertIn('$script:Box = @{ tl = "+"', self.launcher)
+
+    def test_every_state_is_covered_by_both_glyph_sets(self) -> None:
+        import re
+
+        tables = re.findall(r"\$script:Glyph = @\{([^}]*)\}", self.launcher)
+        self.assertEqual(len(tables), 2)
+        for table in tables:
+            keys = set(re.findall(r"(\w+)\s*=", table))
+            self.assertEqual(keys, {"ok", "warn", "bad", "info", "step"})
+
+    def test_ascii_fallback_is_reachable(self) -> None:
+        self.assertIn("[switch]$Ascii", self.launcher)
+        self.assertIn("$env:SAYURI_ASCII", self.launcher)
+        self.assertIn("CodePage -eq 65001", self.launcher)
+
+    def test_statuses_are_driven_by_json_not_text_parsing(self) -> None:
+        self.assertIn('"--preflight", "--format", "json"', self.launcher)
+        self.assertIn("$result.Data.checks", self.launcher)
+        self.assertIn("$check.kind", self.launcher)
+
+    def test_native_colors_are_used_instead_of_ansi(self) -> None:
+        # ANSI ненадёжен в старом conhost: цвет задаётся родным параметром.
+        self.assertIn("-ForegroundColor", self.launcher)
+        self.assertNotIn("\x1b[", self.launcher)
+        self.assertNotIn("`e[", self.launcher)
+
+    def test_ready_panel_shows_site_address(self) -> None:
+        self.assertIn('Write-Panel -Kind "ok" -Lines @("Система активна"', self.launcher)
+
+    def test_fatal_diagnostics_block_the_launch(self) -> None:
+        self.assertIn("if ($result.Data.fatal)", self.launcher)
+        self.assertIn("Запуск невозможен", self.launcher)
+
+    def test_storage_reason_distinguishes_explicit_path_from_fallback(self) -> None:
+        # Явно заданный SAYURI_DATA_DIR не должен выглядеть как
+        # недоступный для записи носитель.
+        self.assertIn('Reason = "explicit"', self.launcher)
+        self.assertIn('Reason = "media"', self.launcher)
+        self.assertIn('Reason = "fallback"', self.launcher)
+        self.assertIn('if ($storage.Reason -eq "fallback")', self.launcher)
+        self.assertNotIn("SAYURI_DATA_DIR_EXPLICIT", self.launcher)
+
+
 if __name__ == "__main__":
     unittest.main()

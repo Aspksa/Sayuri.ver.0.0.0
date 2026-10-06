@@ -22,6 +22,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
 
+from . import console
 from .core.runtime import SystemCore
 from .database import CoreDatabase
 from .endpoint import clear_endpoint, new_token, running_instance, write_endpoint
@@ -313,18 +314,38 @@ def serve(
             source="core",
         )
 
-        print(f"Sayuri Yukishiro v{project_version()} / core v{core.VERSION}")
-        print(f"Адрес: {endpoint.url}")
+        style = console.ConsoleStyle.detect()
+        print(style.status(console.OK, "ядро", f"v{core.VERSION} поднято"))
         if actual_port != options.port:
-            print(f"Порт {options.port} занят — взят свободный порт {actual_port}.")
-        print("Остановка: закройте это окно или нажмите Ctrl+C.")
+            print(
+                style.status(
+                    console.WARN,
+                    "порт",
+                    f"{options.port} занят — взят свободный {actual_port}",
+                )
+            )
+        else:
+            print(style.status(console.OK, "порт", str(actual_port)))
+        print(style.status(console.OK, "сайт", endpoint.url))
+        print()
+        print(
+            style.panel(
+                [
+                    style.paint("Система активна", console.OK),
+                    endpoint.url,
+                    "Остановка: закройте окно или Ctrl+C",
+                ]
+            )
+        )
 
         if options.open_browser:
             _open_site(endpoint.url, actual_host, actual_port)
 
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
-        print("\nОстановка по запросу пользователя.")
+        visual = console.ConsoleStyle.detect()
+        print()
+        print(visual.status(console.INFO, "остановка", "по запросу пользователя"))
     finally:
         # Любой выход обязан вернуть носитель в чистое состояние.
         if server is not None:

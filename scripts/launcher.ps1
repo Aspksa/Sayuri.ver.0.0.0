@@ -5,8 +5,12 @@
       1. определить корень проекта без привязки к букве диска;
       2. найти Python (портативный, виртуальное окружение или системный);
       3. обеспечить записываемое хранилище даже на носителе только для чтения;
-      4. выполнить диагностику;
+      4. показать понятные статусы готовности;
       5. поднять ядро и открыть сайт.
+
+    Статусы рисует сам лаунчер по JSON от диагностики: родные цвета
+    PowerShell надёжнее ANSI в старом conhost. Если консоль не умеет
+    Unicode, значки деградируют до ASCII.
 #>
 
 [CmdletBinding()]
@@ -14,34 +18,137 @@ param(
     [switch]$PreflightOnly,
     [switch]$SkipPreflight,
     [switch]$NoBrowser,
+    [switch]$Ascii,
     [int]$Port = 0
 )
 
 $ErrorActionPreference = "Stop"
 
-try {
-    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-} catch {
-    # Старая консоль без поддержки UTF-8: продолжаем, текст может быть искажён.
+# --- визуальный язык --------------------------------------------------
+
+$script:UseUnicode = $false
+if (-not $Ascii -and -not $env:SAYURI_ASCII) {
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+        $script:UseUnicode = ([Console]::OutputEncoding.CodePage -eq 65001)
+    } catch {
+        $script:UseUnicode = $false
+    }
 }
+
+if ($script:UseUnicode) {
+    $script:Glyph = @{ ok = "✓"; warn = "!"; bad = "✗"; info = "·"; step = "▸" }
+    $script:Box = @{ tl = "╭"; tr = "╮"; bl = "╰"; br = "╯"; h = "─"; v = "│" }
+} else {
+    $script:Glyph = @{ ok = "+"; warn = "!"; bad = "x"; info = "."; step = ">" }
+    $script:Box = @{ tl = "+"; tr = "+"; bl = "+"; br = "+"; h = "-"; v = "|" }
+}
+
+$script:Color = @{
+    ok    = "Green"
+    warn  = "Yellow"
+    bad   = "Red"
+    info  = "DarkGray"
+    step  = "Cyan"
+    title = "White"
+}
+
+function Get-StatusColor {
+    param([string]$Kind)
+    if ($script:Color.ContainsKey($Kind)) { return $script:Color[$Kind] }
+    return $script:Color["info"]
+}
+
+function Write-Status {
+    param(
+        [ValidateSet("ok", "warn", "bad", "info", "step")]
+        [string]$Kind,
+        [string]$Name,
+        [string]$Detail = "",
+        [int]$Width = 13
+    )
+
+    $mark = "[" + $script:Glyph[$Kind] + "]"
+    Write-Host "  " -NoNewline
+    Write-Host $mark -ForegroundColor (Get-StatusColor $Kind) -NoNewline
+    Write-Host (" " + $Name.PadRight($Width)) -NoNewline
+    if ($Detail) {
+        Write-Host (" " + $Detail) -ForegroundColor Gray
+    } else {
+        Write-Host ""
+    }
+}
+
+function Write-Field {
+    param([string]$Name, [string]$Value, [int]$Width = 10)
+
+    Write-Host "  " -NoNewline
+    Write-Host $script:Glyph["step"] -ForegroundColor $script:Color["step"] -NoNewline
+    Write-Host (" " + $Name.PadRight($Width)) -NoNewline
+    Write-Host (" " + $Value) -ForegroundColor Gray
+}
+
+function Write-Step {
+    param([int]$Index, [int]$Total, [string]$Title)
+
+    Write-Host ""
+    Write-Host "  [$Index/$Total]" -ForegroundColor $script:Color["step"] -NoNewline
+    Write-Host (" " + $Title) -ForegroundColor $script:Color["title"]
+}
+
+function Write-Rule {
+    param([int]$Width = 62)
+    Write-Host ("  " + ($script:Box["h"] * $Width)) -ForegroundColor $script:Color["info"]
+}
+
+function Write-Panel {
+    param(
+        [string[]]$Lines,
+        [ValidateSet("ok", "warn", "bad", "info", "step")]
+        [string]$Kind = "ok"
+    )
+
+    $width = 28
+    foreach ($line in $Lines) {
+        if ($line.Length -gt $width) { $width = $line.Length }
+    }
+    $colour = Get-StatusColor $Kind
+    $border = $script:Box["h"] * ($width + 2)
+
+    Write-Host ("  " + $script:Box["tl"] + $border + $script:Box["tr"]) -ForegroundColor $colour
+    foreach ($line in $Lines) {
+        Write-Host ("  " + $script:Box["v"] + " ") -ForegroundColor $colour -NoNewline
+        Write-Host $line.PadRight($width) -NoNewline
+        Write-Host (" " + $script:Box["v"]) -ForegroundColor $colour
+    }
+    Write-Host ("  " + $script:Box["bl"] + $border + $script:Box["br"]) -ForegroundColor $colour
+}
+
+function Get-Plural {
+    param([int]$Count, [string]$One, [string]$Few, [string]$Many)
+
+    $hundred = [Math]::Abs($Count) % 100
+    $ten = [Math]::Abs($Count) % 10
+    if ($hundred -ge 11 -and $hundred -le 14) { return "$Count $Many" }
+    if ($ten -eq 1) { return "$Count $One" }
+    if ($ten -ge 2 -and $ten -le 4) { return "$Count $Few" }
+    return "$Count $Many"
+}
+
+# --- окружение --------------------------------------------------------
 
 $Root = Split-Path -Parent $PSScriptRoot
 $SourceRoot = Join-Path $Root "src"
 $env:PYTHONPATH = $SourceRoot
 $env:PYTHONIOENCODING = "utf-8"
 $env:PYTHONUTF8 = "1"
+if ($Ascii) { $env:SAYURI_ASCII = "1" }
 
 $VersionFile = Join-Path $Root "VERSION"
 if (Test-Path -LiteralPath $VersionFile) {
     $ProjectVersion = (Get-Content -LiteralPath $VersionFile -Raw).Trim()
 } else {
     $ProjectVersion = "unknown"
-}
-
-function Write-Section {
-    param([string]$Text)
-    Write-Host ""
-    Write-Host $Text -ForegroundColor Cyan
 }
 
 function Resolve-SayuriPython {
@@ -75,8 +182,12 @@ function Ensure-WritableData {
         сетевая папка без прав). Тогда данные уходят в профиль пользователя,
         а проект остаётся запускаемым.
     #>
+    # Reason различает три случая: путь задал пользователь, путь на
+    # носителе, путь вынесен из-за защиты от записи. Иначе лаунчер
+    # сообщал бы о недоступном носителе там, где его просто попросили
+    # хранить данные в другом месте.
     if ($env:SAYURI_DATA_DIR) {
-        return
+        return @{ Path = $env:SAYURI_DATA_DIR; Reason = "explicit" }
     }
 
     $dataDir = Join-Path $Root "data"
@@ -87,12 +198,13 @@ function Ensure-WritableData {
         $probe = Join-Path $dataDir ".launcher-write-test"
         Set-Content -LiteralPath $probe -Value "ok" -Encoding utf8 -NoNewline
         Remove-Item -LiteralPath $probe -Force
+        return @{ Path = $dataDir; Reason = "media" }
     } catch {
         $fallbackBase = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $env:TEMP }
         $fallback = Join-Path $fallbackBase "SayuriYukishiro\data"
         New-Item -ItemType Directory -Path $fallback -Force | Out-Null
         $env:SAYURI_DATA_DIR = $fallback
-        Write-Host "[ИНФО] Носитель недоступен для записи. Данные: $fallback" -ForegroundColor Yellow
+        return @{ Path = $fallback; Reason = "fallback" }
     }
 }
 
@@ -104,59 +216,134 @@ function Invoke-Sayuri {
     return $LASTEXITCODE
 }
 
-function Get-RunningEndpoint {
-    $output = & $Python.Exe @($Python.Prefix + @("-m", "sayuri_yukishiro.main", "--endpoint")) 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        return $null
+function Invoke-SayuriJson {
+    param([string[]]$Arguments)
+
+    $callArgs = @($Python.Prefix) + @("-m", "sayuri_yukishiro.main") + $Arguments
+    $raw = & $Python.Exe @callArgs 2>$null
+    $code = $LASTEXITCODE
+    $parsed = $null
+    if ($raw) {
+        try { $parsed = ($raw | Out-String | ConvertFrom-Json) } catch { $parsed = $null }
     }
+    return @{ Data = $parsed; ExitCode = $code }
+}
+
+function Get-PythonVersion {
     try {
-        return ($output | Out-String | ConvertFrom-Json)
+        $raw = & $Python.Exe @($Python.Prefix + @("-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"))
+        return ($raw | Out-String).Trim()
     } catch {
-        return $null
+        return "неизвестно"
     }
 }
 
 # --- запуск -----------------------------------------------------------
 
-Write-Host "Sayuri Yukishiro v$ProjectVersion" -ForegroundColor White
-Write-Host "Корень: $Root" -ForegroundColor DarkGray
+Write-Host ""
+Write-Panel -Kind "step" -Lines @("Sayuri Yukishiro  v$ProjectVersion")
 
 $Python = Resolve-SayuriPython
-Write-Host "Python: $($Python.Exe) ($($Python.Source))" -ForegroundColor DarkGray
+$storage = Ensure-WritableData
 
-Ensure-WritableData
-
-$existing = Get-RunningEndpoint
-if ($existing -and $existing.running) {
-    Write-Host ""
-    Write-Host "Система уже запущена: $($existing.url) (pid $($existing.pid))" -ForegroundColor Yellow
-    if (-not $NoBrowser) {
-        Start-Process $existing.url | Out-Null
-        Write-Host "Сайт открыт в браузере." -ForegroundColor Green
-    }
-    exit 0
+Write-Host ""
+Write-Field "Корень" $Root
+Write-Field "Python" ("{0}  ·  {1}" -f (Get-PythonVersion), $Python.Source)
+switch ($storage.Reason) {
+    "explicit" { Write-Field "Данные" ("{0}  ·  задано вручную" -f $storage.Path) }
+    "fallback" { Write-Field "Данные" ("{0}  ·  вынесено с носителя" -f $storage.Path) }
+    default    { Write-Field "Данные" $storage.Path }
+}
+if ($storage.Reason -eq "fallback") {
+    Write-Status -Kind "warn" -Name "носитель" -Detail "защищён от записи — данные вынесены в профиль"
 }
 
+$totalSteps = if ($PreflightOnly) { 1 } else { 2 }
+$step = 0
+
 if (-not $SkipPreflight) {
-    Write-Section "Проверка готовности"
-    $preflightArgs = @("--preflight")
+    $step++
+    Write-Step $step $totalSteps "Проверка готовности"
+
+    $preflightArgs = @("--preflight", "--format", "json")
     if ($Port -gt 0) { $preflightArgs += @("--port", "$Port") }
-    $code = Invoke-Sayuri -Arguments $preflightArgs
-    if ($code -ne 0) {
+    $result = Invoke-SayuriJson -Arguments $preflightArgs
+
+    if ($null -eq $result.Data) {
+        Write-Status -Kind "bad" -Name "диагностика" -Detail "не удалось получить отчёт"
         Write-Host ""
-        Write-Host "Запуск невозможен: диагностика нашла критические проблемы." -ForegroundColor Red
-        exit $code
+        Write-Panel -Kind "bad" -Lines @("Запуск невозможен", "диагностика не отвечает")
+        exit 1
+    }
+
+    $width = 13
+    foreach ($check in $result.Data.checks) {
+        if ($check.name.Length -ge $width) { $width = $check.name.Length + 1 }
+    }
+    foreach ($check in $result.Data.checks) {
+        Write-Status -Kind $check.kind -Name $check.name -Detail $check.detail -Width $width
+    }
+
+    $summary = $result.Data.summary
+    Write-Rule
+    Write-Host "  " -NoNewline
+    Write-Host (Get-Plural $summary.passed "проверка" "проверки" "проверок") -NoNewline
+    Write-Host " пройдено" -NoNewline
+    if ($summary.warnings -gt 0) {
+        Write-Host " · " -ForegroundColor DarkGray -NoNewline
+        Write-Host (Get-Plural $summary.warnings "замечание" "замечания" "замечаний") `
+            -ForegroundColor $script:Color["warn"] -NoNewline
+    }
+    if ($summary.fatal -gt 0) {
+        Write-Host " · " -ForegroundColor DarkGray -NoNewline
+        Write-Host (Get-Plural $summary.fatal "критическая ошибка" "критические ошибки" "критических ошибок") `
+            -ForegroundColor $script:Color["bad"] -NoNewline
+    }
+    Write-Host ""
+
+    if ($result.Data.fatal) {
+        Write-Host ""
+        Write-Panel -Kind "bad" -Lines @(
+            "Запуск невозможен",
+            "исправьте строки со значком " + $script:Glyph["bad"]
+        )
+        exit 1
     }
 }
 
 if ($PreflightOnly) {
+    Write-Host ""
+    Write-Panel -Kind "ok" -Lines @("Система готова к запуску")
     exit 0
 }
 
-Write-Section "Запуск ядра"
+# Уже запущенный экземпляр: открываем его сайт, второй не поднимаем.
+$existing = Invoke-SayuriJson -Arguments @("--endpoint")
+if ($existing.ExitCode -eq 0 -and $existing.Data -and $existing.Data.running) {
+    Write-Host ""
+    Write-Status -Kind "ok" -Name "экземпляр" -Detail "уже запущен, pid $($existing.Data.pid)"
+    if (-not $NoBrowser) {
+        Start-Process $existing.Data.url | Out-Null
+        Write-Status -Kind "ok" -Name "сайт" -Detail "открыт в браузере"
+    }
+    Write-Host ""
+    Write-Panel -Kind "ok" -Lines @("Система активна", $existing.Data.url)
+    exit 0
+}
+
+$step++
+Write-Step $step $totalSteps "Запуск ядра"
+
 $serveArgs = @("--serve")
 if ($Port -gt 0) { $serveArgs += @("--port", "$Port") }
 if ($NoBrowser) { $serveArgs += "--no-browser" }
 
 $code = Invoke-Sayuri -Arguments $serveArgs
+
+Write-Host ""
+if ($code -eq 0) {
+    Write-Status -Kind "info" -Name "ядро" -Detail "остановлено"
+} else {
+    Write-Status -Kind "bad" -Name "ядро" -Detail "завершилось с кодом $code"
+}
 exit $code

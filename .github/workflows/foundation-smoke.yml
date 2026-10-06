@@ -59,6 +59,24 @@ jobs:
         shell: pwsh
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher.ps1 -PreflightOnly
 
+      - name: Лаунчер в ASCII-режиме
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher.ps1 -PreflightOnly -Ascii
+
+      - name: Машинный отчёт диагностики
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = Join-Path $PWD "src"
+          $report = python -m sayuri_yukishiro.main --preflight --format json | ConvertFrom-Json
+          if ($report.fatal) { throw "диагностика сообщила о критических ошибках" }
+          if (-not $report.checks) { throw "в отчёте нет проверок" }
+          foreach ($check in $report.checks) {
+            if ($check.kind -notin @("ok", "warn", "bad")) {
+              throw "неизвестное состояние проверки: $($check.kind)"
+            }
+          }
+          Write-Host "проверок в отчёте: $($report.summary.total)"
+
       - name: Запуск через BAT и проверка сайта
         shell: pwsh
         run: |
@@ -116,3 +134,14 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m sayuri_yukishiro.main --preflight
+
+      - name: Диагностика в ASCII-режиме
+        env:
+          PYTHONPATH: src
+          SAYURI_ASCII: "1"
+        run: python -m sayuri_yukishiro.main --preflight
+
+      - name: Машинный отчёт диагностики
+        env:
+          PYTHONPATH: src
+        run: python -m sayuri_yukishiro.main --preflight --format json
