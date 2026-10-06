@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sayuri Yukishiro</title>
+<style>
+  :root {
+    --bg: #0f1116;
+    --panel: #171a21;
+    --line: #262b35;
+    --text: #eef1f5;
+    --muted: #949daa;
+    --ok: #74e39b;
+    --warn: #f3c969;
+    --bad: #f27d7d;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  main { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 44px 0 64px; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: clamp(28px, 5vw, 46px); letter-spacing: -0.035em; }
+  .tagline { color: var(--muted); margin-top: 6px; }
+  .state { display: inline-flex; align-items: center; gap: 9px; font-weight: 500; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 14px currentColor; }
+  .state.ok { color: var(--ok); }
+  .state.warn { color: var(--warn); }
+  .state.bad { color: var(--bad); }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-top: 26px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+  .card h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .label { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .value { font-size: 21px; margin-top: 6px; word-break: break-word; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; word-break: break-all; }
+  .wide { grid-column: 1 / -1; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: 0; }
+  .row strong { font-weight: 600; }
+  .row .meta { color: var(--muted); font-size: 13px; }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #212734; color: #cbd5e3; white-space: nowrap; }
+  .pill.ok { background: rgba(116,227,155,.14); color: var(--ok); }
+  .pill.bad { background: rgba(242,125,125,.14); color: var(--bad); }
+  .empty { color: var(--muted); font-size: 14px; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f7f9; --panel: #fff; --line: #e3e6eb; --text: #14171c; --muted: #68707c;
+      --ok: #1b8a4b; --warn: #a06a00; --bad: #c0392b;
+      color-scheme: light;
+    }
+    :root:not([data-theme="dark"]) .pill { background: #eef1f5; color: #3d4450; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Sayuri Yukishiro</h1>
+      <div class="tagline">Переносимая персональная платформа</div>
+    </div>
+    <div class="state warn" id="state"><span class="dot"></span><span id="stateText">Соединение…</span></div>
+  </header>
+
+  <section class="grid">
+    <article class="card">
+      <div class="label">Версия</div>
+      <div class="value" id="version">—</div>
+      <div class="hint" id="coreVersion"></div>
+    </article>
+    <article class="card">
+      <div class="label">Службы ядра</div>
+      <div class="value" id="services">—</div>
+      <div class="hint" id="coreHealth"></div>
+    </article>
+    <article class="card">
+      <div class="label">База ядра</div>
+      <div class="value" id="dbcheck">—</div>
+      <div class="hint" id="dbpath"></div>
+    </article>
+    <article class="card">
+      <div class="label">Носитель</div>
+      <div class="value" id="media">—</div>
+      <div class="hint" id="dataDir"></div>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="card wide">
+      <h2>Службы</h2>
+      <div id="serviceList"><div class="empty">Загрузка…</div></div>
+    </article>
+    <article class="card">
+      <h2>Модули</h2>
+      <div id="moduleList"><div class="empty">Загрузка…</div></div>
+    </article>
+    <article class="card">
+      <h2>Последние события</h2>
+      <div id="eventList"><div class="empty">Загрузка…</div></div>
+    </article>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function setState(cls, text) {
+  const node = $('state');
+  node.className = 'state ' + cls;
+  $('stateText').textContent = text;
+}
+
+function rows(target, items, render) {
+  target.innerHTML = '';
+  if (!items || items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'Пусто';
+    target.appendChild(empty);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    render(row, item);
+    target.appendChild(row);
+  }
+}
+
+function textBlock(title, meta) {
+  const wrap = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  wrap.appendChild(strong);
+  if (meta) {
+    const small = document.createElement('div');
+    small.className = 'meta';
+    small.textContent = meta;
+    wrap.appendChild(small);
+  }
+  return wrap;
+}
+
+function pill(text, cls) {
+  const span = document.createElement('span');
+  span.className = 'pill' + (cls ? ' ' + cls : '');
+  span.textContent = text;
+  return span;
+}
+
+async function getJson(path) {
+  const response = await fetch(path, { cache: 'no-store' });
+  if (!response.ok) throw new Error(path + ' → ' + response.status);
+  return response.json();
+}
+
+async function refresh() {
+  try {
+    const [health, system, core, modules, events] = await Promise.all([
+      getJson('/api/health'),
+      getJson('/api/system'),
+      getJson('/api/core'),
+      getJson('/api/modules'),
+      getJson('/api/core/events')
+    ]);
+
+    setState(health.status === 'ok' ? 'ok' : 'warn',
+             health.status === 'ok' ? 'Система активна' : 'Работает с замечаниями');
+
+    $('version').textContent = 'v' + system.version;
+    $('coreVersion').textContent = 'ядро v' + system.core_version + ' · схема v' + system.schema_version;
+    $('services').textContent = system.healthy_services + ' / ' + system.service_count;
+    $('coreHealth').textContent = 'состояние: ' + system.core_health;
+    $('dbcheck').textContent = system.database_check;
+    $('dbpath').textContent = system.database;
+    $('media').textContent = system.media;
+    $('dataDir').textContent = system.data_dir;
+
+    rows($('serviceList'), core.health.services, (row, item) => {
+      row.appendChild(textBlock(item.name, item.detail || ''));
+      row.appendChild(pill(item.state, item.healthy ? 'ok' : 'bad'));
+    });
+
+    rows($('moduleList'), modules.modules, (row, item) => {
+      row.appendChild(textBlock(item.name, item.id + ' · v' + item.version));
+      row.appendChild(pill(item.status));
+    });
+
+    rows($('eventList'), events.events.slice(0, 8), (row, item) => {
+      row.appendChild(textBlock(item.event_type, item.created_at.replace('T', ' ').slice(0, 19)));
+      row.appendChild(pill(item.source));
+    });
+
+    $('footer').textContent =
+      'Адрес ' + location.origin + ' · только этот компьютер · задач к восстановлению: ' +
+      system.recoverable_tasks;
+  } catch (error) {
+    setState('bad', 'Нет связи с ядром');
+    $('footer').textContent = String(error);
+  }
+}
+
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+"""Проверки переносимости: любой носитель, любая буква диска, любой путь."""
+
+from __future__ import annotations
+
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from sayuri_yukishiro import paths
+from sayuri_yukishiro.database import CoreDatabase
+from sayuri_yukishiro.storage_policy import (
+    ALLOWED_JOURNAL_MODES,
+    describe_media,
+    sqlite_journal_mode,
+)
+
+
+class StoragePolicyTests(unittest.TestCase):
+    def test_local_disk_uses_wal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("SAYURI_SQLITE_JOURNAL_MODE", None)
+                os.environ.pop("OneDrive", None)
+                self.assertEqual(sqlite_journal_mode(Path(tmp) / "core.db"), "WAL")
+
+    def test_removable_media_uses_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "core.db"
+            with patch(
+                "sayuri_yukishiro.storage_policy.windows_drive_type",
+                return_value=2,
+            ):
+                self.assertEqual(describe_media(target), "removable")
+                self.assertEqual(sqlite_journal_mode(target), "DELETE")
+
+    def test_network_drive_uses_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "core.db"
+            with patch(
+                "sayuri_yukishiro.storage_policy.windows_drive_type",
+                return_value=4,
+            ):
+                self.assertEqual(describe_media(target), "network")
+                self.assertEqual(sqlite_journal_mode(target), "DELETE")
+
+    def test_synced_folder_uses_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "OneDrive" / "Sayuri" / "core.db"
+            with patch.dict(os.environ, {"OneDrive": str(root / "OneDrive")}, clear=False):
+                os.environ.pop("SAYURI_SQLITE_JOURNAL_MODE", None)
+                self.assertEqual(describe_media(target), "synced")
+                self.assertEqual(sqlite_journal_mode(target), "DELETE")
+
+    def test_explicit_override_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(
+                os.environ,
+                {"SAYURI_SQLITE_JOURNAL_MODE": "DELETE"},
+                clear=False,
+            ):
+                self.assertEqual(sqlite_journal_mode(Path(tmp) / "core.db"), "DELETE")
+
+    def test_invalid_override_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(
+                os.environ,
+                {"SAYURI_SQLITE_JOURNAL_MODE": "MEMORY"},
+                clear=False,
+            ):
+                with self.assertRaises(ValueError):
+                    sqlite_journal_mode(Path(tmp) / "core.db")
+
+    def test_declared_modes_are_the_only_ones_used(self) -> None:
+        self.assertEqual(ALLOWED_JOURNAL_MODES, {"WAL", "DELETE"})
+
+    def test_journal_mode_is_actually_applied_to_connection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(
+                os.environ,
+                {"SAYURI_SQLITE_JOURNAL_MODE": "DELETE"},
+                clear=False,
+            ):
+                db = CoreDatabase(Path(tmp) / "core.db")
+                db.initialize()
+                with db.session() as conn:
+                    mode = str(conn.execute("PRAGMA journal_mode").fetchone()[0])
+                self.assertEqual(mode.lower(), "delete")
+
+
+class PathTests(unittest.TestCase):
+    def test_no_hardcoded_drive_letter_in_sources(self) -> None:
+        import re
+
+        pattern = re.compile(r"[A-Za-z]:\\\\")
+        offenders: list[str] = []
+        for file in (paths.PROJECT_ROOT / "src").rglob("*.py"):
+            if pattern.search(file.read_text(encoding="utf-8")):
+                offenders.append(str(file))
+        self.assertEqual(offenders, [])
+
+    def test_data_dir_derives_from_project_root_by_default(self) -> None:
+        self.assertTrue(str(paths.DATA_DIR).startswith(str(paths.PROJECT_ROOT)))
+
+    def test_custom_data_dir_is_honoured(self) -> None:
+        import importlib
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"SAYURI_DATA_DIR": tmp}, clear=False):
+                reloaded = importlib.reload(paths)
+                try:
+                    self.assertEqual(reloaded.DATA_DIR, Path(tmp).resolve())
+                    reloaded.ensure_runtime_dirs()
+                    self.assertTrue((Path(tmp) / "core").is_dir())
+                    self.assertTrue((Path(tmp) / "runtime").is_dir())
+                finally:
+                    os.environ.pop("SAYURI_DATA_DIR", None)
+                    importlib.reload(paths)
+
+
+class LauncherContractTests(unittest.TestCase):
+    """Лаунчер — часть продукта: его контракт проверяется тестами."""
+
+    def setUp(self) -> None:
+        self.root = paths.PROJECT_ROOT
+        self.batch = (self.root / "Sayuri Yukishiro.bat").read_text(encoding="utf-8")
+        self.launcher = (self.root / "scripts" / "launcher.ps1").read_text(encoding="utf-8")
+
+    def test_entry_point_files_exist(self) -> None:
+        self.assertTrue((self.root / "Sayuri Yukishiro.bat").is_file())
+        self.assertTrue((self.root / "scripts" / "launcher.ps1").is_file())
+
+    def test_batch_derives_root_from_its_own_location(self) -> None:
+        self.assertIn("%~dp0scripts\\launcher.ps1", self.batch)
+
+    def test_batch_does_not_pass_trailing_backslash_root(self) -> None:
+        # "%~dp0" заканчивается обратным слэшем и ломает разбор параметра.
+        self.assertNotIn('-Root "%~dp0"', self.batch)
+
+    def test_launcher_does_not_assign_automatic_args_variable(self) -> None:
+        self.assertNotRegex(self.launcher, r"\$args\s*=")
+
+    def test_launcher_resolves_python_in_portable_order(self) -> None:
+        portable = self.launcher.index("runtime\\python\\python.exe")
+        venv = self.launcher.index(".venv\\Scripts\\python.exe")
+        system = self.launcher.index('Get-Command "python.exe"')
+        self.assertLess(portable, venv)
+        self.assertLess(venv, system)
+
+    def test_launcher_handles_read_only_media(self) -> None:
+        self.assertIn("SAYURI_DATA_DIR", self.launcher)
+        self.assertIn("Ensure-WritableData", self.launcher)
+
+    def test_launcher_opens_site_of_running_instance(self) -> None:
+        self.assertIn("--endpoint", self.launcher)
+        self.assertIn("Start-Process", self.launcher)
+
+    def test_no_hardcoded_drive_letter_in_launchers(self) -> None:
+        import re
+
+        pattern = re.compile(r"(?<![%$])\b[A-Za-z]:\\\\(?!launcher)")
+        self.assertIsNone(pattern.search(self.batch))
+        self.assertIsNone(pattern.search(self.launcher))
+
+
+if __name__ == "__main__":
+    unittest.main()

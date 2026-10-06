@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "last_assigned": {
+    "CHG": 16,
+    "FEAT": 15,
+    "BUG": 0,
+    "FIX": 0,
+    "IMP": 0,
+    "ARCH": 1
+  },
+  "next": {
+    "CHG": "CHG-0017",
+    "FEAT": "FEAT-0016",
+    "BUG": "BUG-0001",
+    "FIX": "FIX-0001",
+    "IMP": "IMP-0001",
+    "ARCH": "ARCH-0002"
+  },
+  "active_development": {
+    "version": "v0.2.0",
+    "status": "planned",
+    "reserved": []
+  }
+}

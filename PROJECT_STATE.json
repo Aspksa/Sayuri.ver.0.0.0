@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "project": "Sayuri Yukishiro",
+  "repository": "Aspksa/Sayuri.ver.0.0.0",
+  "version": "0.1.0",
+  "development_version": "0.2.0",
+  "core_version": "0.1.0",
+  "stage": "core-foundation",
+  "status": "completed",
+  "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> sayuri_yukishiro.main",
+  "platform": {
+    "primary": "Windows",
+    "also_runs_on": ["Linux", "macOS"],
+    "portable_paths": true,
+    "any_media": true,
+    "default_host": "127.0.0.1",
+    "default_port": 8765,
+    "auto_port": true,
+    "auto_open_site": true
+  },
+  "foundation": {
+    "core_database": "data/core/sayuri_yukishiro.db",
+    "module_databases": "data/modules/<module_id>.db",
+    "runtime_endpoint": "data/runtime/endpoint.json",
+    "data_directory": "project data/ by default; SAYURI_DATA_DIR relocates it; launcher falls back to LOCALAPPDATA on read-only media",
+    "sqlite_journal_policy": "WAL on local disk; DELETE on removable, network and synced paths",
+    "web_shell": "Python standard library HTTP server, loopback only"
+  },
+  "core": {
+    "version": "0.1.0",
+    "services": [
+      "configuration",
+      "logging",
+      "event_bus",
+      "job_manager",
+      "checkpoints",
+      "recovery"
+    ],
+    "database_schema": 3,
+    "api": "CoreAPI",
+    "startup_policy": "services start in registration order; failed startup rolls back every started service",
+    "shutdown_policy": "reverse order; runtime endpoint and session row are always cleaned up",
+    "recovery_policy": "restore context and next_action without automatic replay of arbitrary actions",
+    "health_policy": "lightweight polling; SQLite quick_check only on deep status and diagnostics"
+  },
+  "safety": {
+    "no_hardcoded_drive_letter": true,
+    "bind_localhost_only": true,
+    "tokenized_shutdown": true,
+    "single_instance_per_media": true,
+    "web_root_traversal_blocked": true,
+    "no_module_privileges_yet": true
+  },
+  "api": [
+    "/api/health",
+    "/api/core",
+    "/api/core/jobs",
+    "/api/core/recovery",
+    "/api/core/events",
+    "/api/core/config",
+    "/api/modules",
+    "/api/system",
+    "/api/shutdown"
+  ],
+  "update_protocol": {
+    "required": true,
+    "protocol": "docs/UPDATE_PROTOCOL.md",
+    "journal": "UPDATE_LOG.md",
+    "id_registry": "UPDATE_IDS.json",
+    "agent_entrypoint": "AGENTS.md",
+    "validator": "scripts/validate_update_protocol.py",
+    "sequence": "task -> ID -> change -> check -> version -> journal -> commit -> next_action"
+  },
+  "versioning_policy": {
+    "project_version": "SemVer",
+    "rule": "Every released project change increments the project version.",
+    "module_versions": "Each module owns an independent SemVer version."
+  },
+  "next_action": "v0.2.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown."
+}

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime data (создаётся на носителе при запуске)
+data/
+logs/
+*.log
+
+# Портативный интерпретатор
+runtime/
+
+# Локальные секреты
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Временное
+*.tmp
+*.bak

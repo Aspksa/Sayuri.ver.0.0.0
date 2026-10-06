@@ -1,0 +1,18 @@
+{
+  "core": {
+    "max_workers": 4,
+    "job_history_limit": 500,
+    "recovery_enabled": true
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "auto_port": true,
+    "open_browser": true
+  },
+  "logging": {
+    "level": "INFO",
+    "max_bytes": 2000000,
+    "backup_count": 3
+  }
+}
