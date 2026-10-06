@@ -5,12 +5,15 @@
   "version": "0.1.0",
   "development_version": "0.2.0",
   "core_version": "0.1.0",
-  "stage": "core-foundation",
-  "status": "completed",
+  "stage": "launcher-ux",
+  "status": "in_progress",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> sayuri_yukishiro.main",
   "platform": {
     "primary": "Windows",
-    "also_runs_on": ["Linux", "macOS"],
+    "also_runs_on": [
+      "Linux",
+      "macOS"
+    ],
     "portable_paths": true,
     "any_media": true,
     "default_host": "127.0.0.1",
@@ -76,5 +79,5 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.2.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown."
+  "next_action": "v0.1.1 Launcher status UX: add JSON diagnostics output, a shared status glyph language with ASCII fallback, step indicators and a ready panel with the site address."
 }

@@ -1,24 +1,37 @@
 {
   "schema_version": 1,
   "last_assigned": {
-    "CHG": 16,
-    "FEAT": 15,
+    "CHG": 22,
+    "FEAT": 16,
     "BUG": 0,
     "FIX": 0,
-    "IMP": 0,
+    "IMP": 5,
     "ARCH": 1
   },
   "next": {
-    "CHG": "CHG-0017",
-    "FEAT": "FEAT-0016",
+    "CHG": "CHG-0023",
+    "FEAT": "FEAT-0017",
     "BUG": "BUG-0001",
     "FIX": "FIX-0001",
-    "IMP": "IMP-0001",
+    "IMP": "IMP-0006",
     "ARCH": "ARCH-0002"
   },
   "active_development": {
-    "version": "v0.2.0",
-    "status": "planned",
-    "reserved": []
+    "version": "v0.1.1",
+    "status": "in_progress",
+    "reserved": [
+      "CHG-0017",
+      "FEAT-0016",
+      "CHG-0018",
+      "IMP-0001",
+      "CHG-0019",
+      "IMP-0002",
+      "CHG-0020",
+      "IMP-0003",
+      "CHG-0021",
+      "IMP-0004",
+      "CHG-0022",
+      "IMP-0005"
+    ]
   }
 }
