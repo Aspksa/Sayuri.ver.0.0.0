@@ -1,4 +1,4 @@
-# Архитектура Sayuri Yukishiro — v0.4.0
+# Архитектура Sayuri Yukishiro — v0.4.1
 
 ## 1. Слои
 

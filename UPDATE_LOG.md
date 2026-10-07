@@ -293,7 +293,7 @@ next_action: v0.5.0 — Cognitive Foundation: provider runtime, durable reasonin
 
 Дата: 2026-10-07
 
-Статус: in_progress
+Статус: completed
 
 Изменения:
 
@@ -306,20 +306,20 @@ next_action: v0.5.0 — Cognitive Foundation: provider runtime, durable reasonin
 
 Проверки:
 
-- tests: PENDING
+- tests: PASS (169 тестов)
 - lint: NOT_CONFIGURED
 - type-check: NOT_CONFIGURED
-- smoke-test: PENDING
-- protocol-validation: PENDING
-- python-compile: PENDING
-- powershell-static: PENDING
-- github-actions-windows: PENDING
-- github-actions-linux: PENDING
+- smoke-test: PASS
+- protocol-validation: PASS
+- python-compile: PASS
+- powershell-static: PASS
+- github-actions-windows: PASS (Foundation Smoke run #20; обычный BAT + relocated SAYURI_DATA_DIR)
+- github-actions-linux: PASS (Foundation Smoke run #20)
 
 Commit:
 
-PENDING
+02a9e198399672d0b8202936957845bfad2d4124
 
 Следующий шаг:
 
-next_action: проверить v0.4.1 Startup Recovery в Foundation Smoke; при зелёном Windows/Linux CI финализировать v0.4.1 и вернуть next_action к v0.5.0 Cognitive Foundation.
+next_action: v0.5.0 — Cognitive Foundation: provider runtime, durable reasoning task context, planner/reasoning с evidence receipts и явными action boundaries поверх Module Runtime.
