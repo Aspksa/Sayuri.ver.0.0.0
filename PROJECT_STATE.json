@@ -5,8 +5,8 @@
   "version": "0.2.1",
   "development_version": "0.3.0",
   "core_version": "0.1.0",
-  "stage": "release-policy",
-  "status": "completed",
+  "stage": "update-service",
+  "status": "in_progress",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> background core + scripts/tray.ps1",
   "platform": {
     "primary": "Windows",
@@ -82,7 +82,7 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.3.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown.",
+  "next_action": "v0.3.0 Update service: implement a safe fast-forward GitHub update driven from the web UI, with component inventory, pre-update checks, backup, staged progress, post-update verification with rollback, structured history and before/after visualisation.",
   "console": {
     "glyph_sets": [
       "unicode",
