@@ -2,11 +2,11 @@
   "schema_version": 1,
   "project": "Sayuri Yukishiro",
   "repository": "Aspksa/Sayuri.ver.0.0.0",
-  "version": "0.3.0",
-  "development_version": "0.3.1",
+  "version": "0.3.1",
+  "development_version": "0.4.0",
   "core_version": "0.1.0",
   "stage": "foundation-hardening",
-  "status": "in_progress",
+  "status": "completed",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> background core + scripts/tray.ps1",
   "platform": {
     "primary": "Windows",
@@ -85,7 +85,7 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.3.1: verify implementation commit in GitHub Actions on Windows and Linux; if green, finalize metadata, re-run CI, then fast-forward main. After that continue with v0.4.0 Module Runtime.",
+  "next_action": "v0.4.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown; include module versions in the update inventory.",
   "console": {
     "glyph_sets": [
       "unicode",

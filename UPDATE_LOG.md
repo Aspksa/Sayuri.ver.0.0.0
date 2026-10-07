@@ -209,7 +209,7 @@ next_action: v0.4.0 — Module Runtime: манифест module.json, обнар
 
 Дата: 2026-10-07
 
-Статус: in_progress
+Статус: completed
 
 Изменения:
 
@@ -229,20 +229,20 @@ next_action: v0.4.0 — Module Runtime: манифест module.json, обнар
 
 Проверки:
 
-- tests: PENDING
+- tests: PASS (152 теста)
 - lint: NOT_CONFIGURED
 - type-check: NOT_CONFIGURED
-- smoke-test: PENDING
-- protocol-validation: PENDING
-- python-compile: PENDING
-- powershell-static: PENDING
-- github-actions-windows: PENDING
-- github-actions-linux: PENDING
+- smoke-test: PASS
+- protocol-validation: PASS
+- python-compile: PASS
+- powershell-static: PASS
+- github-actions-windows: PASS (Foundation Smoke run #13)
+- github-actions-linux: PASS (Foundation Smoke run #13)
 
 Commit:
 
-PENDING
+79941772b838a42eb83ac6ed3076af20c84e9d53
 
 Следующий шаг:
 
-next_action: проверить implementation commit v0.3.1 в GitHub Actions на Windows и Linux; при зелёном CI финализировать v0.3.1 и затем перейти к v0.4.0 Module Runtime.
+next_action: v0.4.0 — Module Runtime: манифест module.json, обнаружение модулей, граф зависимостей, разрешения, миграции модульных БД, health и управляемый запуск/остановка; версии модулей включить в инвентарь обновления.
