@@ -3,10 +3,10 @@
   "project": "Sayuri Yukishiro",
   "repository": "Aspksa/Sayuri.ver.0.0.0",
   "version": "0.4.0",
-  "development_version": "0.5.0",
+  "development_version": "0.4.1",
   "core_version": "0.1.0",
-  "stage": "module-runtime",
-  "status": "completed",
+  "stage": "startup-recovery",
+  "status": "in_progress",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> background core + scripts/tray.ps1",
   "platform": {
     "primary": "Windows",
@@ -25,7 +25,7 @@
   "foundation": {
     "core_database": "data/core/sayuri_yukishiro.db",
     "module_databases": "data/modules/<module_id>.db",
-    "runtime_endpoint": "data/runtime/endpoint.json",
+    "runtime_endpoint": "$SAYURI_DATA_DIR/runtime/endpoint.json; project data/runtime by default",
     "data_directory": "project data/ by default; SAYURI_DATA_DIR relocates it; launcher falls back to LOCALAPPDATA on read-only media",
     "sqlite_journal_policy": "WAL on local disk; DELETE on removable, network and synced paths",
     "web_shell": "Python standard library HTTP server, loopback only"
@@ -89,7 +89,7 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.5.0 Cognitive Foundation: implement provider runtime abstraction, durable reasoning task context, planner/reasoning steps with evidence receipts and explicit action boundaries on top of Module Runtime; do not allow LLM code to bypass mutation controls.",
+  "next_action": "v0.4.1 Startup Recovery: run Foundation Smoke on main for relocated SAYURI_DATA_DIR endpoint handling and stale endpoint/PID reuse recovery; if green, finalize v0.4.1 and restore v0.5.0 Cognitive Foundation as next_action.",
   "console": {
     "glyph_sets": [
       "unicode",
@@ -132,7 +132,8 @@
     "fallbacks": [
       "no Windows Forms -> core stays in the console window",
       "tray failed to start -> hidden core is stopped, never left unattended",
-      "stale endpoint.json -> cleared by pid liveness check"
+      "relocated SAYURI_DATA_DIR -> launcher and tray use the same runtime directory as Python core",
+      "stale endpoint.json -> PID plus live Sayuri /api/health are verified before treating it as an active instance"
     ],
     "disable": "-NoTray switch or SAYURI_TRAY=0"
   },

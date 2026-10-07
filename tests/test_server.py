@@ -222,10 +222,28 @@ class EndpointTests(unittest.TestCase):
             project_version="1.2.3",
             pid=os.getpid() + 1,
         )
-        with patch.object(endpoint_module, "process_alive", return_value=True):
+        with (
+            patch.object(endpoint_module, "process_alive", return_value=True),
+            patch.object(endpoint_module, "_endpoint_health_matches", return_value=True),
+        ):
             existing = endpoint_module.running_instance()
         self.assertIsNotNone(existing)
         self.assertEqual(existing.port, 9002)
+
+    def test_reused_live_pid_without_sayuri_health_is_cleared(self) -> None:
+        endpoint_module.write_endpoint(
+            host="127.0.0.1",
+            port=9004,
+            token="secret",
+            project_version="1.2.3",
+            pid=os.getpid() + 1,
+        )
+        with (
+            patch.object(endpoint_module, "process_alive", return_value=True),
+            patch.object(endpoint_module, "_endpoint_health_matches", return_value=False),
+        ):
+            self.assertIsNone(endpoint_module.running_instance())
+        self.assertFalse(endpoint_module.endpoint_path().exists())
 
     def test_second_instance_is_refused(self) -> None:
         from sayuri_yukishiro.server import InstanceAlreadyRunning
@@ -237,7 +255,10 @@ class EndpointTests(unittest.TestCase):
             project_version="1.2.3",
             pid=os.getpid() + 1,
         )
-        with patch.object(endpoint_module, "process_alive", return_value=True):
+        with (
+            patch.object(endpoint_module, "process_alive", return_value=True),
+            patch.object(endpoint_module, "_endpoint_health_matches", return_value=True),
+        ):
             with self.assertRaises(InstanceAlreadyRunning):
                 serve()
 

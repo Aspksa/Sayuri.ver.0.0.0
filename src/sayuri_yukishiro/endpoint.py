@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -138,6 +140,39 @@ def _windows_process_alive(pid: int) -> bool:
         kernel32.CloseHandle(handle)
 
 
+def _endpoint_health_matches(endpoint: Endpoint, timeout: float = 0.75) -> bool:
+    """Проверить, что endpoint действительно принадлежит живой Sayuri.
+
+    Одного PID недостаточно: Windows может переиспользовать PID завершившегося
+    процесса, и старый endpoint.json тогда ошибочно блокировал новый запуск.
+    """
+
+    if endpoint.host not in {"127.0.0.1", "::1", "localhost"}:
+        return False
+    host = f"[{endpoint.host}]" if ":" in endpoint.host else endpoint.host
+    url = f"http://{host}:{endpoint.port}/api/health"
+    try:
+        request = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            if response.status != 200:
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+    except (
+        OSError,
+        ValueError,
+        UnicodeDecodeError,
+        urllib.error.URLError,
+    ):
+        return False
+    try:
+        return (
+            str(payload.get("project", "")) == "Sayuri Yukishiro"
+            and int(payload.get("pid", -1)) == endpoint.pid
+        )
+    except (TypeError, ValueError):
+        return False
+
+
 def running_instance() -> Endpoint | None:
     """Живой экземпляр, запущенный с этого носителя, либо None."""
 
@@ -147,6 +182,9 @@ def running_instance() -> Endpoint | None:
     if endpoint.pid == os.getpid():
         return None
     if not process_alive(endpoint.pid):
+        clear_endpoint()
+        return None
+    if not _endpoint_health_matches(endpoint):
         clear_endpoint()
         return None
     return endpoint

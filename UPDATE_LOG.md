@@ -286,3 +286,39 @@ f0d05a8c7d1483dde3aa26cb8a149c6433dc15e2
 Следующий шаг:
 
 next_action: v0.5.0 — Cognitive Foundation: provider runtime, durable reasoning task context, planner/reasoning с evidence receipts и явными action boundaries поверх Module Runtime.
+
+---
+
+## v0.4.1
+
+Дата: 2026-10-07
+
+Статус: in_progress
+
+Изменения:
+
+- CHG-0070 / BUG-0007 — Python core писал `endpoint.json` в активный `SAYURI_DATA_DIR`, но launcher и tray жёстко искали его в `<project>/data/runtime`; при вынесенном или fallback-хранилище ядро запускалось, но оболочка считала запуск неудачным.
+- CHG-0071 / FIX-0007 -> BUG-0007 — launcher теперь ждёт endpoint в runtime-каталоге выбранного `storage.Path`, передаёт тот же `DataDir` в tray, а tray закрепляет `SAYURI_DATA_DIR` и читает endpoint из того же каталога.
+- CHG-0072 / BUG-0008 — старый `endpoint.json` считался живым только по PID; после переиспользования PID другим Windows-процессом новый запуск мог ложно завершаться как «Sayuri уже запущена».
+- CHG-0073 / FIX-0008 -> BUG-0008 — `running_instance()` теперь подтверждает локальный `/api/health`, имя проекта и совпадение PID; неподтверждённый endpoint автоматически очищается.
+- CHG-0074 / IMP-0012 — добавлены регрессионные тесты выбранного data/runtime пути, tray DataDir и восстановления после reused PID/stale endpoint.
+
+Проверки:
+
+- tests: PENDING
+- lint: NOT_CONFIGURED
+- type-check: NOT_CONFIGURED
+- smoke-test: PENDING
+- protocol-validation: PENDING
+- python-compile: PENDING
+- powershell-static: PENDING
+- github-actions-windows: PENDING
+- github-actions-linux: PENDING
+
+Commit:
+
+PENDING
+
+Следующий шаг:
+
+next_action: проверить v0.4.1 Startup Recovery в Foundation Smoke; при зелёном Windows/Linux CI финализировать v0.4.1 и вернуть next_action к v0.5.0 Cognitive Foundation.

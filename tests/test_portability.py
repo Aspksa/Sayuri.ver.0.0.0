@@ -162,6 +162,11 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("SAYURI_DATA_DIR", self.launcher)
         self.assertIn("Ensure-WritableData", self.launcher)
 
+    def test_launcher_waits_in_the_selected_data_directory(self) -> None:
+        self.assertIn('$RuntimeDir = Join-Path $storage.Path "runtime"', self.launcher)
+        self.assertIn('$endpointPath = Join-Path $RuntimeDir "endpoint.json"', self.launcher)
+        self.assertNotIn('Join-Path $Root "data\\runtime\\endpoint.json"', self.launcher)
+
     def test_launcher_opens_site_of_running_instance(self) -> None:
         self.assertIn("--endpoint", self.launcher)
         self.assertIn("Start-Process", self.launcher)

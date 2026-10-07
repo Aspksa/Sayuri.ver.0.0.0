@@ -168,6 +168,13 @@ class TrayContractTests(unittest.TestCase):
     def test_shutdown_is_authenticated_by_token(self) -> None:
         self.assertIn('"X-Sayuri-Token" = $endpoint.token', self.tray)
 
+    def test_tray_uses_the_selected_data_directory(self) -> None:
+        self.assertIn('[string]$DataDir = ""', self.tray)
+        self.assertIn('$env:SAYURI_DATA_DIR = $DataDir', self.tray)
+        self.assertIn('$EndpointPath = Join-Path $DataDir "runtime\\endpoint.json"', self.tray)
+        self.assertIn('DataDir       = $storage.Path', self.launcher)
+        self.assertNotIn('Join-Path $Root "data\\runtime\\endpoint.json"', self.tray)
+
     def test_state_is_polled_into_the_tooltip(self) -> None:
         self.assertIn("System.Windows.Forms.Timer", self.tray)
         self.assertIn("function Update-TrayState", self.tray)

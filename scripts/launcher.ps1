@@ -254,7 +254,7 @@ function Wait-ForEndpoint {
     #>
     param([int]$ExpectedPid, [int]$TimeoutSeconds = 60)
 
-    $endpointPath = Join-Path $Root "data\runtime\endpoint.json"
+    $endpointPath = Join-Path $RuntimeDir "endpoint.json"
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         if (Test-Path -LiteralPath $endpointPath) {
@@ -289,6 +289,7 @@ Write-Panel -Kind "step" -Lines @("Sayuri Yukishiro  v$ProjectVersion")
 
 $Python = Resolve-SayuriPython
 $storage = Ensure-WritableData
+$RuntimeDir = Join-Path $storage.Path "runtime"
 
 Write-Host ""
 Write-Field "Корень" $Root
@@ -447,6 +448,7 @@ $trayParams = @{
     PythonPrefix = $Python.Prefix
     CorePid      = $core.Id
     PollSeconds  = 5
+    DataDir       = $storage.Path
 }
 & $trayScript @trayParams
 $trayCode = $LASTEXITCODE

@@ -19,6 +19,7 @@ param(
     [string[]]$PythonPrefix = @(),
     [int]$CorePid = 0,
     [int]$PollSeconds = 5,
+    [string]$DataDir = "",
     [switch]$KeepConsole
 )
 
@@ -51,7 +52,15 @@ $script:LastStatus = ""
 $script:Endpoint = $null
 $script:CoreProcessId = $CorePid
 
-$EndpointPath = Join-Path $Root "data\runtime\endpoint.json"
+if (-not $DataDir) {
+    $DataDir = if ($env:SAYURI_DATA_DIR) {
+        $env:SAYURI_DATA_DIR
+    } else {
+        Join-Path $Root "data"
+    }
+}
+$env:SAYURI_DATA_DIR = $DataDir
+$EndpointPath = Join-Path $DataDir "runtime\endpoint.json"
 $IconPath = Join-Path $Root "assets\sayuri.ico"
 $VersionFile = Join-Path $Root "VERSION"
 $ProjectVersion = if (Test-Path -LiteralPath $VersionFile) {
