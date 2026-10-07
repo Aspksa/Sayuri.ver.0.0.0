@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import socket
@@ -37,7 +38,7 @@ class BindTests(unittest.TestCase):
                 def __init__(self, address: tuple[str, int]) -> None:
                     attempts.append(address[1])
                     if address[1] == busy_port:
-                        raise OSError(98, "Address already in use")
+                        raise OSError(errno.EADDRINUSE, "Address already in use")
                     self.server_address = ("127.0.0.1", 45000)
 
             server = bind_server(
@@ -58,7 +59,7 @@ class BindTests(unittest.TestCase):
 
     def test_unrelated_errors_are_never_swallowed(self) -> None:
         def factory(_address: tuple[str, int]) -> None:
-            raise OSError(99, "Cannot assign requested address")
+            raise OSError(errno.EADDRNOTAVAIL, "Cannot assign requested address")
 
         with self.assertRaises(OSError):
             bind_server("127.0.0.1", 8765, auto_port=True, factory=factory)
