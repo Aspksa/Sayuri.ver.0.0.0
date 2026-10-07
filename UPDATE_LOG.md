@@ -126,3 +126,33 @@ Commit:
 Следующий шаг:
 
 next_action: v0.3.0 — Module Runtime: манифест module.json, обнаружение модулей, граф зависимостей, разрешения, миграции модульных БД, health и управляемый запуск/остановка.
+
+---
+
+## v0.2.1
+
+Дата: 2026-10-07
+
+Статус: in_progress
+
+Изменения:
+
+- CHG-0032 / IMP-0008 — в порядок работы агента добавляется обязательная публикация: после финализации версии ветка разработки сливается в main и отправляется без отдельного запроса.
+
+Проверки:
+
+- tests: PENDING
+- lint: NOT_CONFIGURED
+- type-check: NOT_CONFIGURED
+- smoke-test: PENDING
+- protocol-validation: PENDING
+- python-compile: PENDING
+- powershell-static: PENDING
+
+Commit:
+
+PENDING_AFTER_IMPLEMENTATION_CHECKS
+
+Следующий шаг:
+
+next_action: закрепить правило публикации в AGENTS.md, выполнить проверки и финализировать версию.

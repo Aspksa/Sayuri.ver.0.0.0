@@ -163,6 +163,8 @@ python -m compileall -q src scripts tests
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
+Завершённая версия сливается в `main` и отправляется: `main` — то, что отдаёт «Download ZIP», поэтому непрослитая версия для пользователя недоступна. Порядок — в `AGENTS.md`.
+
 Архитектура: `docs/ARCHITECTURE.md`.
 
 ## Следующий этап
