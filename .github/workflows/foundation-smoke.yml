@@ -23,6 +23,10 @@ jobs:
         shell: pwsh
         run: python scripts/validate_update_protocol.py
 
+      - name: Статическая проверка PowerShell
+        shell: pwsh
+        run: python scripts/check_powershell.py
+
       - name: Компиляция Python
         shell: pwsh
         run: python -m compileall -q src scripts tests
@@ -39,21 +43,48 @@ jobs:
           $env:PYTHONPATH = Join-Path $PWD "src"
           python -m sayuri_yukishiro.main --preflight
 
-      - name: Синтаксис PowerShell-лаунчера
+      - name: Синтаксис PowerShell-скриптов
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path "scripts/launcher.ps1"),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+          $failed = $false
+          foreach ($script in @("scripts/launcher.ps1", "scripts/tray.ps1")) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $script),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Host "$script: ошибки разбора" -ForegroundColor Red
+              $errors | ForEach-Object { Write-Error $_.Message }
+              $failed = $true
+            } else {
+              Write-Host "$script: синтаксис корректен"
+            }
           }
-          Write-Host "launcher.ps1: синтаксис корректен"
+          if ($failed) { exit 1 }
+
+      - name: Иконка воспроизводится из исходника
+        shell: pwsh
+        run: |
+          $before = (Get-FileHash assets/sayuri.ico -Algorithm SHA256).Hash
+          python scripts/make_icon.py
+          $after = (Get-FileHash assets/sayuri.ico -Algorithm SHA256).Hash
+          if ($before -ne $after) { throw "assets/sayuri.ico не совпадает с генератором" }
+          Write-Host "иконка воспроизводима"
+
+      - name: Иконка загружается как System.Drawing.Icon
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $icon = New-Object System.Drawing.Icon ((Resolve-Path "assets/sayuri.ico").Path)
+          try {
+            if ($icon.Width -le 0) { throw "иконка пустая" }
+            Write-Host "иконка загружена: $($icon.Width)x$($icon.Height)"
+          } finally {
+            $icon.Dispose()
+          }
 
       - name: Запуск лаунчера в режиме проверки
         shell: pwsh
@@ -81,7 +112,7 @@ jobs:
         shell: pwsh
         run: |
           $proc = Start-Process -FilePath "cmd.exe" `
-            -ArgumentList '/c', '"Sayuri Yukishiro.bat" -NoBrowser' `
+            -ArgumentList '/c', '"Sayuri Yukishiro.bat" -NoBrowser -NoTray' `
             -PassThru -WindowStyle Hidden
           try {
             $endpointFile = "data/runtime/endpoint.json"
@@ -121,6 +152,15 @@ jobs:
 
       - name: Проверка протокола обновлений
         run: python scripts/validate_update_protocol.py
+
+      - name: Статическая проверка PowerShell
+        run: python scripts/check_powershell.py
+
+      - name: Иконка воспроизводится из исходника
+        run: |
+          sha256sum assets/sayuri.ico > /tmp/icon.sha
+          python scripts/make_icon.py
+          sha256sum -c /tmp/icon.sha
 
       - name: Компиляция Python
         run: python -m compileall -q src scripts tests

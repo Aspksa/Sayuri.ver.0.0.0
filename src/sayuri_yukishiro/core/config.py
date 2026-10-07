@@ -28,6 +28,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "max_bytes": 2000000,
         "backup_count": 3,
     },
+    "tray": {
+        "enabled": True,
+        "hide_console": True,
+        "poll_seconds": 5,
+    },
 }
 
 _FALSE_VALUES = {"0", "false", "no", "off"}
@@ -75,6 +80,9 @@ class ConfigurationService(ManagedService):
             (("server", "port"), _env_int("SAYURI_PORT")),
             (("server", "auto_port"), _env_flag("SAYURI_AUTO_PORT")),
             (("server", "open_browser"), _env_flag("SAYURI_OPEN_BROWSER")),
+            (("tray", "enabled"), _env_flag("SAYURI_TRAY")),
+            (("tray", "hide_console"), _env_flag("SAYURI_TRAY_HIDE_CONSOLE")),
+            (("tray", "poll_seconds"), _env_int("SAYURI_TRAY_POLL_SECONDS")),
         )
         for (section, key), value in overrides:
             if value is not None:

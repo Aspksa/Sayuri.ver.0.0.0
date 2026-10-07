@@ -14,5 +14,10 @@
     "level": "INFO",
     "max_bytes": 2000000,
     "backup_count": 3
+  },
+  "tray": {
+    "enabled": true,
+    "hide_console": true,
+    "poll_seconds": 5
   }
 }

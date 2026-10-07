@@ -19,6 +19,8 @@ param(
     [switch]$SkipPreflight,
     [switch]$NoBrowser,
     [switch]$Ascii,
+    [switch]$NoTray,
+    [switch]$Tray,
     [int]$Port = 0
 )
 
@@ -137,6 +139,13 @@ function Get-Plural {
 
 # --- окружение --------------------------------------------------------
 
+# $IsWindows есть только в PowerShell 7+; в 5.1 его нет вовсе.
+$IsWindowsHost = if ($null -ne $PSVersionTable.Platform) {
+    $PSVersionTable.Platform -eq "Win32NT"
+} else {
+    $true
+}
+
 $Root = Split-Path -Parent $PSScriptRoot
 $SourceRoot = Join-Path $Root "src"
 $env:PYTHONPATH = $SourceRoot
@@ -227,6 +236,41 @@ function Invoke-SayuriJson {
         try { $parsed = ($raw | Out-String | ConvertFrom-Json) } catch { $parsed = $null }
     }
     return @{ Data = $parsed; ExitCode = $code }
+}
+
+function Test-WindowsForms {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms, System.Drawing -ErrorAction Stop
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Wait-ForEndpoint {
+    <#
+        Ядро само записывает фактический адрес в endpoint.json. Ждём именно
+        запись от нашего процесса: чужой файл от прошлого запуска не подойдёт.
+    #>
+    param([int]$ExpectedPid, [int]$TimeoutSeconds = 60)
+
+    $endpointPath = Join-Path $Root "data\runtime\endpoint.json"
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Path -LiteralPath $endpointPath) {
+            try {
+                $data = Get-Content -LiteralPath $endpointPath -Raw | ConvertFrom-Json
+                if ($data.pid -eq $ExpectedPid) { return $data }
+            } catch {
+                # Файл пишется атомарно, но читатель может успеть между
+                # созданием и заменой: просто пробуем снова.
+            }
+        }
+        $process = Get-Process -Id $ExpectedPid -ErrorAction SilentlyContinue
+        if (-not $process) { return $null }
+        Start-Sleep -Milliseconds 300
+    }
+    return $null
 }
 
 function Get-PythonVersion {
@@ -334,16 +378,89 @@ if ($existing.ExitCode -eq 0 -and $existing.Data -and $existing.Data.running) {
 $step++
 Write-Step $step $totalSteps "Запуск ядра"
 
+# Режим трея — по умолчанию на Windows с доступными Windows Forms.
+# -NoTray возвращает поведение «ядро в этом окне».
+$trayScript = Join-Path $PSScriptRoot "tray.ps1"
+$useTray = $false
+if (-not $NoTray -and (Test-Path -LiteralPath $trayScript)) {
+    if ($Tray) {
+        $useTray = $true
+    } elseif ($IsWindowsHost) {
+        $useTray = $true
+    }
+}
+if ($useTray -and -not (Test-WindowsForms)) {
+    Write-Status -Kind "warn" -Name "трей" -Detail "Windows Forms недоступны — ядро останется в этом окне"
+    $useTray = $false
+}
+
 $serveArgs = @("--serve")
 if ($Port -gt 0) { $serveArgs += @("--port", "$Port") }
 if ($NoBrowser) { $serveArgs += "--no-browser" }
 
-$code = Invoke-Sayuri -Arguments $serveArgs
+if (-not $useTray) {
+    $code = Invoke-Sayuri -Arguments $serveArgs
+
+    Write-Host ""
+    if ($code -eq 0) {
+        Write-Status -Kind "info" -Name "ядро" -Detail "остановлено"
+    } else {
+        Write-Status -Kind "bad" -Name "ядро" -Detail "завершилось с кодом $code"
+    }
+    exit $code
+}
+
+# Ядро уходит в отдельный скрытый процесс: окно консоли можно свернуть,
+# а ядро продолжит работать и переживёт сворачивание.
+$coreArgs = @($Python.Prefix) + @("-m", "sayuri_yukishiro.main") + $serveArgs
+$core = Start-Process -FilePath $Python.Exe -ArgumentList $coreArgs `
+    -WorkingDirectory $Root -WindowStyle Hidden -PassThru
+
+$endpoint = Wait-ForEndpoint -ExpectedPid $core.Id -TimeoutSeconds 60
+if (-not $endpoint) {
+    Write-Status -Kind "bad" -Name "ядро" -Detail "не поднялось за 60 секунд"
+    if (-not $core.HasExited) { $core.Kill() }
+    Write-Host ""
+    Write-Panel -Kind "bad" -Lines @("Запуск не удался", "ядро не сообщило адрес")
+    exit 1
+}
+
+Write-Status -Kind "ok" -Name "ядро" -Detail "запущено, pid $($core.Id)"
+Write-Status -Kind "ok" -Name "сайт" -Detail $endpoint.url
+if (-not $NoBrowser) {
+    Start-Process $endpoint.url | Out-Null
+    Write-Status -Kind "ok" -Name "браузер" -Detail "сайт открыт"
+}
 
 Write-Host ""
-if ($code -eq 0) {
-    Write-Status -Kind "info" -Name "ядро" -Detail "остановлено"
-} else {
-    Write-Status -Kind "bad" -Name "ядро" -Detail "завершилось с кодом $code"
+Write-Panel -Kind "ok" -Lines @(
+    "Система активна",
+    $endpoint.url,
+    "Значок у часов: меню и выход"
+)
+Write-Host ""
+Write-Status -Kind "info" -Name "окно" -Detail "сворачивается в область уведомлений"
+
+$trayParams = @{
+    Root         = $Root
+    PythonExe    = $Python.Exe
+    PythonPrefix = $Python.Prefix
+    CorePid      = $core.Id
+    PollSeconds  = 5
 }
-exit $code
+& $trayScript @trayParams
+$trayCode = $LASTEXITCODE
+
+if ($trayCode -eq 2) {
+    # Трей не поднялся: не оставляем ядро без присмотра в скрытом процессе.
+    Write-Status -Kind "warn" -Name "трей" -Detail "не запустился — ядро остановлено"
+    $existing = Invoke-SayuriJson -Arguments @("--endpoint")
+    if ($existing.Data -and $existing.Data.running -and -not $core.HasExited) {
+        $core.Kill()
+    }
+    exit 2
+}
+
+Write-Host ""
+Write-Status -Kind "info" -Name "ядро" -Detail "остановлено"
+exit 0
