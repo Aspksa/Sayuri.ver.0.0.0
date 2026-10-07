@@ -133,26 +133,26 @@ next_action: v0.3.0 — Module Runtime: манифест module.json, обнар
 
 Дата: 2026-10-07
 
-Статус: in_progress
+Статус: completed
 
 Изменения:
 
-- CHG-0032 / IMP-0008 — в порядок работы агента добавляется обязательная публикация: после финализации версии ветка разработки сливается в main и отправляется без отдельного запроса.
+- CHG-0032 / IMP-0008 — в порядок работы агента добавлено обязательное правило публикации: после финализации версии ветка разработки сливается в main только fast-forward и отправляется без отдельного запроса; там же зафиксировано ограничение среды на пуш tag-ссылок.
 
 Проверки:
 
-- tests: PENDING
+- tests: PASS (117 тестов)
 - lint: NOT_CONFIGURED
 - type-check: NOT_CONFIGURED
-- smoke-test: PENDING
-- protocol-validation: PENDING
-- python-compile: PENDING
-- powershell-static: PENDING
+- smoke-test: PASS
+- protocol-validation: PASS
+- python-compile: PASS
+- powershell-static: PASS
 
 Commit:
 
-PENDING_AFTER_IMPLEMENTATION_CHECKS
+6f2b25c7d700161fea3d72e8d6127927cbf0a76c
 
 Следующий шаг:
 
-next_action: закрепить правило публикации в AGENTS.md, выполнить проверки и финализировать версию.
+next_action: v0.3.0 — Module Runtime: манифест module.json, обнаружение модулей, граф зависимостей, разрешения, миграции модульных БД, health и управляемый запуск/остановка.
