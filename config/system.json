@@ -19,5 +19,9 @@
     "enabled": true,
     "hide_console": true,
     "poll_seconds": 5
+  },
+  "modules": {
+    "enabled": true,
+    "root": "modules"
   }
 }

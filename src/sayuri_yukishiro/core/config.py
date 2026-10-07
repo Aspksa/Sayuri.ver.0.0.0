@@ -33,6 +33,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "hide_console": True,
         "poll_seconds": 5,
     },
+    "modules": {
+        "enabled": True,
+        "root": "modules",
+    },
 }
 
 _FALSE_VALUES = {"0", "false", "no", "off"}
@@ -83,6 +87,7 @@ class ConfigurationService(ManagedService):
             (("tray", "enabled"), _env_flag("SAYURI_TRAY")),
             (("tray", "hide_console"), _env_flag("SAYURI_TRAY_HIDE_CONSOLE")),
             (("tray", "poll_seconds"), _env_int("SAYURI_TRAY_POLL_SECONDS")),
+            (("modules", "enabled"), _env_flag("SAYURI_MODULES_ENABLED")),
         )
         for (section, key), value in overrides:
             if value is not None:

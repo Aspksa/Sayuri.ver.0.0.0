@@ -56,9 +56,47 @@ def _protocol_version(root: Path) -> str:
         return "—"
 
 
+def _module_component(raw: str, source: str) -> Component | None:
+    try:
+        import json
+
+        data = json.loads(raw)
+        module_id = str(data["id"]).strip()
+        name = str(data["name"]).strip()
+        version = str(data["version"]).strip()
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if not module_id or not name or not version:
+        return None
+    return Component(
+        key=f"module:{module_id}",
+        title=f"Модуль · {name}",
+        version=version,
+        kind="semver",
+        source=source,
+        detail=f"module id: {module_id}",
+    )
+
+
+def _module_components_from_disk(base: Path) -> list[Component]:
+    root = base / "modules"
+    if not root.is_dir():
+        return []
+    result: list[Component] = []
+    for path in sorted(root.glob("*/module.json")):
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        component = _module_component(raw, path.relative_to(base).as_posix())
+        if component is not None:
+            result.append(component)
+    return result
+
+
 def collect_components(root: Path | None = None) -> list[Component]:
     base = root or PROJECT_ROOT
-    return [
+    components = [
         Component(
             key="project",
             title="Проект",
@@ -124,6 +162,8 @@ def collect_components(root: Path | None = None) -> list[Component]:
             detail="единственный файл для пользователя",
         ),
     ]
+    components.extend(_module_components_from_disk(base))
+    return components
 
 
 def components_at_ref(git, ref: str, root: Path | None = None) -> list[Component]:
@@ -157,6 +197,10 @@ def components_at_ref(git, ref: str, root: Path | None = None) -> list[Component
         elif key == "protocol":
             raw = text_at("UPDATE_IDS.json")
             version = _extract_schema_field(raw) or item.version
+        elif key.startswith("module:"):
+            raw = text_at(item.source)
+            target = _module_component(raw, item.source) if raw is not None else None
+            version = target.version if target is not None else "—"
         elif item.kind == "digest":
             version = digest_at(item.source)
         result.append(
@@ -169,6 +213,21 @@ def components_at_ref(git, ref: str, root: Path | None = None) -> list[Component
                 detail=item.detail,
             )
         )
+    known = {item.key for item in result}
+    try:
+        target_files = git.list_files(ref, "modules")
+    except Exception:
+        target_files = []
+    for path in target_files:
+        if not path.endswith("/module.json"):
+            continue
+        raw = text_at(path)
+        if raw is None:
+            continue
+        component = _module_component(raw, path)
+        if component is not None and component.key not in known:
+            result.append(component)
+            known.add(component.key)
     return result
 
 
@@ -209,9 +268,11 @@ def diff_components(
 
     after_by_key = {item.key: item for item in after}
     rows: list[dict[str, Any]] = []
+    before_keys: set[str] = set()
     for item in before:
+        before_keys.add(item.key)
         target = after_by_key.get(item.key)
-        new_version = target.version if target else item.version
+        new_version = target.version if target else "—"
         rows.append(
             {
                 "key": item.key,
@@ -222,6 +283,21 @@ def diff_components(
                 "before": item.version,
                 "after": new_version,
                 "changed": new_version != item.version,
+            }
+        )
+    for item in after:
+        if item.key in before_keys:
+            continue
+        rows.append(
+            {
+                "key": item.key,
+                "title": item.title,
+                "kind": item.kind,
+                "source": item.source,
+                "detail": item.detail,
+                "before": "—",
+                "after": item.version,
+                "changed": True,
             }
         )
     return rows

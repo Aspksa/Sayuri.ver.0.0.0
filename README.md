@@ -82,6 +82,22 @@
 - **CoreAPI** — единственный интерфейс ядра для будущих модулей.
 - **Диагностика** — Python, носитель, хранилище, интерфейс, база, ядро, браузер, экземпляр, порт, Git.
 
+## Module Runtime v0.4.0
+
+Модули живут в `modules/<module_id>/` и описываются строгим `module.json`.
+Runtime обнаруживает их без импорта, проверяет SemVer и зависимости, применяет
+миграции отдельной SQLite-базы, выдаёт только разрешённый `ModuleAPI`, запускает
+в dependency order и останавливает в обратном порядке.
+
+Ошибка модуля не обязана валить ядро: модуль получает `failed/blocked`, а
+система — `degraded`. Ручной start/stop доступен через локальный tokenized API.
+Версии модулей входят в план обновления «было → стало».
+
+Важно: permissions ограничивают capability API, но in-process Python не является
+OS-песочницей. Недоверенные модули потребуют отдельного process isolation слоя.
+
+Подробный контракт: `docs/MODULE_RUNTIME.md`.
+
 ## Командная строка
 
 ```
@@ -148,8 +164,10 @@ python -m sayuri_yukishiro.main --endpoint                  # адрес зап�
 | `GET /api/core/recovery` | незавершённые задачи с `next_action` |
 | `GET /api/core/events` | последние события |
 | `GET /api/core/config` | действующая конфигурация |
-| `GET /api/modules` | реестр модулей |
+| `GET /api/modules` | manifests, dependency graph, lifecycle и health модулей |
 | `GET /api/system` | полная сводка: носитель, схема, адрес, запуски |
+| `POST /api/modules/<id>/start` | запустить модуль, требует токен |
+| `POST /api/modules/<id>/stop` | остановить модуль, требует токен |
 | `POST /api/shutdown` | мягкая остановка, требует токен |
 | `GET /api/session` | токен для изменяющих вызовов, только локально |
 | `GET /api/update` | состояние обновления, компоненты, источник, копии |
@@ -178,6 +196,7 @@ python -m sayuri_yukishiro.main --endpoint                  # адрес зап�
 | `SAYURI_TRAY` | включить или отключить режим трея |
 | `SAYURI_TRAY_HIDE_CONSOLE` | сворачивать окно при запуске |
 | `SAYURI_TRAY_POLL_SECONDS` | период опроса состояния в трее |
+| `SAYURI_MODULES_ENABLED` | включить или отключить Module Runtime |
 
 ## Требования
 

@@ -5,8 +5,8 @@
   "version": "0.3.1",
   "development_version": "0.4.0",
   "core_version": "0.1.0",
-  "stage": "foundation-hardening",
-  "status": "completed",
+  "stage": "module-runtime",
+  "status": "in_progress",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> background core + scripts/tray.ps1",
   "platform": {
     "primary": "Windows",
@@ -39,6 +39,7 @@
       "job_manager",
       "checkpoints",
       "recovery",
+      "modules",
       "update"
     ],
     "database_schema": 4,
@@ -54,10 +55,11 @@
     "tokenized_shutdown": true,
     "single_instance_per_media": true,
     "web_root_traversal_blocked": true,
-    "no_module_privileges_yet": true,
     "no_orphan_background_core": true,
     "update_cannot_overwrite_local_work": true,
-    "update_rolls_back_on_failed_verification": true
+    "update_rolls_back_on_failed_verification": true,
+    "module_api_capability_scoped": true,
+    "module_process_sandbox": false
   },
   "api": [
     "/api/health",
@@ -68,7 +70,9 @@
     "/api/core/config",
     "/api/modules",
     "/api/system",
-    "/api/shutdown"
+    "/api/shutdown",
+    "/api/modules/<module_id>/start",
+    "/api/modules/<module_id>/stop"
   ],
   "update_protocol": {
     "required": true,
@@ -85,7 +89,7 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.4.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown; include module versions in the update inventory.",
+  "next_action": "v0.4.0: run Foundation Smoke for the Module Runtime implementation commit on Windows and Linux; fix any discovered defects, then finalize v0.4.0 and advance to v0.5.0 Cognitive Foundation.",
   "console": {
     "glyph_sets": [
       "unicode",
@@ -159,7 +163,8 @@
       "web",
       "launcher",
       "tray",
-      "entry"
+      "entry",
+      "module:*"
     ],
     "history_source": "UPDATE_LOG.md plus the update_runs table",
     "api": [
@@ -181,5 +186,40 @@
       "update a downloaded ZIP copy",
       "merge diverged history"
     ]
+  },
+  "module_runtime": {
+    "version": "0.4.0",
+    "package": "src/sayuri_yukishiro/modules/",
+    "documentation": "docs/MODULE_RUNTIME.md",
+    "manifest": "modules/<module_id>/module.json",
+    "manifest_schema": 1,
+    "lifecycle": [
+      "discovered",
+      "disabled",
+      "running",
+      "stopped",
+      "blocked",
+      "failed"
+    ],
+    "dependency_policy": "required dependencies must exist, satisfy min_version and be running before dependants; cycles are blocked",
+    "permissions": [
+      "core.status.read",
+      "config.read",
+      "events.publish",
+      "events.subscribe",
+      "jobs.submit",
+      "jobs.read",
+      "checkpoints.write",
+      "recovery.read",
+      "log.write"
+    ],
+    "database": "data/modules/<module_id>.db with ordered per-module migrations",
+    "api": [
+      "GET /api/modules",
+      "POST /api/modules/<module_id>/start",
+      "POST /api/modules/<module_id>/stop"
+    ],
+    "isolation": "capability-scoped ModuleAPI; in-process trusted Python, not an OS/process sandbox",
+    "update_inventory": "module:<id> components are compared on current disk and target Git ref"
   }
 }

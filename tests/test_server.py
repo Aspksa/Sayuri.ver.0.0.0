@@ -169,6 +169,10 @@ class LiveServerTests(unittest.TestCase):
         self.assertEqual(self.post("/api/shutdown", None), 403)
         self.assertEqual(self.post("/api/shutdown", "wrong-token"), 403)
 
+    def test_module_mutation_requires_token(self) -> None:
+        self.assertEqual(self.post("/api/modules/missing/start", None), 403)
+        self.assertEqual(self.post("/api/modules/missing/start", self.token), 404)
+
     def test_unknown_post_path_is_not_found(self) -> None:
         self.assertEqual(self.post("/api/other", self.token), 404)
 

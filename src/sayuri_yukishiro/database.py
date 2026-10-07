@@ -279,8 +279,19 @@ class CoreDatabase:
             ).fetchall()
             return [dict(row) for row in rows]
 
-    def register_module(self, module_id: str, name: str, version: str) -> Path:
-        module_path = module_database_path(module_id)
+    def register_module(
+        self,
+        module_id: str,
+        name: str,
+        version: str,
+        *,
+        db_path: Path | None = None,
+    ) -> Path:
+        if not SAFE_MODULE_ID.fullmatch(module_id):
+            raise ValueError(
+                "Invalid module id. Use lowercase letters, digits and underscore."
+            )
+        module_path = db_path or module_database_path(module_id)
         now = utc_now()
         with self.session() as conn:
             conn.execute(
@@ -296,6 +307,19 @@ class CoreDatabase:
                 (module_id, name, version, str(module_path), now, now),
             )
         return module_path
+
+    def set_module_status(self, module_id: str, status: str) -> None:
+        if not SAFE_MODULE_ID.fullmatch(module_id):
+            raise ValueError(
+                "Invalid module id. Use lowercase letters, digits and underscore."
+            )
+        with self.session() as conn:
+            cursor = conn.execute(
+                "UPDATE modules SET status=?, updated_at=? WHERE id=?",
+                (status, utc_now(), module_id),
+            )
+            if cursor.rowcount != 1:
+                raise KeyError(module_id)
 
     # --- события и аудит --------------------------------------------
 

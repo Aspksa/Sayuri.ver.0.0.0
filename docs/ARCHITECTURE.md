@@ -150,6 +150,48 @@ launcher.ps1 (окно, затем скрыто)
 
 Короткая версия: только fast-forward от upstream текущей ветки, свои правки блокируют обновление, резервная копия до изменений, проверка новым кодом в отдельном процессе, откат при провале. Источник сверяется дважды — при проверке и перед установкой.
 
-## 12. Следующий слой
+## 12. Module Runtime
 
-v0.4.0 — Module Runtime: манифест `module.json`, обнаружение модулей, граф зависимостей, разрешения, миграции модульных БД, health и управляемый запуск/остановка. Модуль получает только `CoreAPI` и собственную базу.
+Module Runtime подключён к SystemCore как служба `modules` после recovery и
+до update service. Каталог модулей по умолчанию — `modules/`; runtime-данные
+остаются в `data/modules/`.
+
+Порядок:
+
+```text
+module.json
+   |
+   +--> validation: id / SemVer / entrypoint / permissions / migrations
+   |
+   +--> dependency graph
+   |
+   +--> ModuleDatabase(data/modules/<id>.db)
+   |
+   +--> ModuleAPI(capabilities)
+   |
+   +--> entrypoint(context)
+            |
+            +--> start()
+            +--> health()
+            +--> stop()
+```
+
+Обязательные зависимости запускаются раньше зависимых модулей. Цикл,
+отсутствующая зависимость или несовместимая версия дают `blocked`. Ошибка
+entrypoint/migration даёт `failed`, но не уничтожает ядро: health SystemCore
+становится degraded.
+
+Модуль не получает SystemCore напрямую через штатный контракт. ModuleAPI
+проверяет permissions перед каждым capability. Это не процессная песочница:
+in-process Python остаётся доверенным кодом.
+
+Update inventory читает `modules/*/module.json` и на текущем диске, и на
+target Git ref, поэтому новые, удалённые и обновлённые модули видны до установки.
+
+Подробный контракт: `docs/MODULE_RUNTIME.md`.
+
+## 13. Следующий слой
+
+После v0.4.0 фундамент готов к v0.5.0 Cognitive Foundation: provider runtime,
+контекст, planner/reasoning, evidence receipts и долговечное состояние
+интеллектуальных задач поверх Module Runtime.

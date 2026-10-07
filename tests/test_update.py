@@ -21,7 +21,7 @@ from sayuri_yukishiro.update import backup as backup_module
 from sayuri_yukishiro.update.changelog import parse_changelog
 from sayuri_yukishiro.update.checks import blocking_failures, run_update_checks
 from sayuri_yukishiro.update.git_client import GitClient, GitError, GitResult
-from sayuri_yukishiro.update.inventory import collect_components, diff_components
+from sayuri_yukishiro.update.inventory import collect_components, components_at_ref, diff_components
 from sayuri_yukishiro.update.service import STAGE_SEQUENCE, UpdateService
 
 CHANGELOG = """# Журнал
@@ -143,6 +143,7 @@ class GitClientTests(unittest.TestCase):
             paths = {item["path"]: item["status"] for item in files}
             self.assertEqual(paths["added.txt"], "A")
             self.assertEqual(paths["VERSION"], "M")
+            self.assertIn("VERSION", client.list_files(target))
 
     def test_fast_forward_only_merge(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -247,6 +248,59 @@ class InventoryTests(unittest.TestCase):
             keys,
             {"project", "core", "database", "protocol", "web", "launcher", "tray", "entry"},
         )
+
+    def test_module_manifests_are_inventory_components(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            module_root = root / "modules" / "alpha"
+            module_root.mkdir(parents=True)
+            (module_root / "module.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "id": "alpha",
+                        "name": "Alpha",
+                        "version": "2.3.4",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            components = collect_components(root)
+            module = next(item for item in components if item.key == "module:alpha")
+            self.assertEqual(module.version, "2.3.4")
+            self.assertEqual(module.source, "modules/alpha/module.json")
+
+    def test_new_module_at_target_ref_appears_in_diff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            seed, clone = make_repository(Path(tmp))
+            module_root = seed / "modules" / "alpha"
+            module_root.mkdir(parents=True)
+            (module_root / "module.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "id": "alpha",
+                        "name": "Alpha",
+                        "version": "1.0.0",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            git(seed, "add", "-A")
+            git(seed, "commit", "--quiet", "-m", "add alpha module")
+            git(seed, "push", "--quiet", "origin", "main")
+
+            client = GitClient(clone)
+            client.fetch("origin", "main")
+            target = client.resolve("origin/main")
+            rows = diff_components(
+                collect_components(clone),
+                components_at_ref(client, target, clone),
+            )
+            module = next(row for row in rows if row["key"] == "module:alpha")
+            self.assertEqual(module["before"], "—")
+            self.assertEqual(module["after"], "1.0.0")
+            self.assertTrue(module["changed"])
 
     def test_schema_component_matches_database(self) -> None:
         schema = next(item for item in collect_components() if item.key == "database")

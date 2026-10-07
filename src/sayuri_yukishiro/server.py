@@ -185,7 +185,7 @@ class SayuriHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/modules":
-            self._json({"modules": core.db.list_modules()})
+            self._json(core.modules.snapshot())
             return
 
         if path == "/api/session":
@@ -200,7 +200,13 @@ class SayuriHandler(BaseHTTPRequestHandler):
             self._json(
                 {
                     "token": self.app.token,
-                    "token_required_for": ["/api/shutdown", "/api/update/check", "/api/update/apply"],
+                    "token_required_for": [
+                        "/api/shutdown",
+                        "/api/update/check",
+                        "/api/update/apply",
+                        "/api/modules/<module_id>/start",
+                        "/api/modules/<module_id>/stop",
+                    ],
                     "header": TOKEN_HEADER,
                 }
             )
@@ -278,11 +284,21 @@ class SayuriHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         core = self.app.core
 
+        module_action: tuple[str, str] | None = None
+        parts = [part for part in path.split("/") if part]
+        if (
+            len(parts) == 4
+            and parts[0] == "api"
+            and parts[1] == "modules"
+            and parts[3] in {"start", "stop"}
+        ):
+            module_action = (parts[2], parts[3])
+
         if path not in {
             "/api/shutdown",
             "/api/update/check",
             "/api/update/apply",
-        }:
+        } and module_action is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
@@ -296,6 +312,29 @@ class SayuriHandler(BaseHTTPRequestHandler):
                 name="sayuri-shutdown",
                 daemon=True,
             ).start()
+            return
+
+        if module_action is not None:
+            module_id, action = module_action
+            try:
+                payload = (
+                    core.modules.start_module(module_id)
+                    if action == "start"
+                    else core.modules.stop_module(module_id)
+                )
+            except KeyError:
+                self._json(
+                    {"status": "error", "error": "module not found"},
+                    HTTPStatus.NOT_FOUND,
+                )
+                return
+            except Exception as exc:
+                self._json(
+                    {"status": "error", "error": str(exc)},
+                    HTTPStatus.CONFLICT,
+                )
+                return
+            self._json({"status": "ok", "module": payload})
             return
 
         if path == "/api/update/check":

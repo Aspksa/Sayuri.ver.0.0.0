@@ -246,3 +246,43 @@ Commit:
 Следующий шаг:
 
 next_action: v0.4.0 — Module Runtime: манифест module.json, обнаружение модулей, граф зависимостей, разрешения, миграции модульных БД, health и управляемый запуск/остановка; версии модулей включить в инвентарь обновления.
+
+---
+
+## v0.4.0
+
+Дата: 2026-10-07
+
+Статус: in_progress
+
+Изменения:
+
+- CHG-0061 / ARCH-0003 — Module Runtime выделен в отдельный слой `src/sayuri_yukishiro/modules/` и подключён как управляемая служба SystemCore между recovery и update service.
+- CHG-0062 / FEAT-0037 — добавлен строгий `module.json`: schema version, безопасный id, SemVer, entrypoint внутри каталога, enabled, permissions, dependencies и декларативные DB migrations.
+- CHG-0063 / FEAT-0038 — добавлено обнаружение модулей и dependency graph: обязательные зависимости проверяются по min_version, запускаются раньше dependants, отсутствующие/failed/disabled зависимости и циклы дают `blocked`.
+- CHG-0064 / FEAT-0039 — добавлен `ModuleAPI` с capability permissions, namespaced events/jobs/checkpoints и запретом чтения чужих job id через штатный API.
+- CHG-0065 / FEAT-0040 — добавлена отдельная `ModuleDatabase` для каждого модуля с последовательными транзакционными миграциями, защитой от базы новее manifest и той же политикой WAL/DELETE по типу носителя.
+- CHG-0066 / FEAT-0041 — добавлен управляемый lifecycle модулей, health, degraded-состояние без падения SystemCore и ручной start/stop с запретом остановки используемой обязательной зависимости.
+- CHG-0067 / FEAT-0042 — локальный API модулей расширен: `GET /api/modules`, tokenized `POST /api/modules/<id>/start` и `/stop`.
+- CHG-0068 / FEAT-0043 — update inventory включает `module:<id>` и умеет видеть версии новых/удалённых модулей непосредственно на target Git ref до установки.
+- CHG-0069 / IMP-0011 — добавлены конфигурация Module Runtime, документация границы безопасности и регрессионные тесты manifests, migrations, permissions, dependencies, lifecycle, API и update inventory.
+
+Проверки:
+
+- tests: PENDING
+- lint: NOT_CONFIGURED
+- type-check: NOT_CONFIGURED
+- smoke-test: PENDING
+- protocol-validation: PENDING
+- python-compile: PENDING
+- powershell-static: PENDING
+- github-actions-windows: PENDING
+- github-actions-linux: PENDING
+
+Commit:
+
+PENDING
+
+Следующий шаг:
+
+next_action: проверить implementation commit v0.4.0 в Foundation Smoke на Windows и Linux; исправить найденные дефекты, затем финализировать v0.4.0 и перейти к v0.5.0 Cognitive Foundation.

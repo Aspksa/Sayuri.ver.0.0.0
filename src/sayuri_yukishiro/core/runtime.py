@@ -11,7 +11,7 @@ from threading import RLock
 from typing import Any
 
 from ..database import CoreDatabase
-from ..paths import CONFIG_FILE, LOG_DIR, project_version
+from ..paths import CONFIG_FILE, LOG_DIR, MODULE_DATA_DIR, PROJECT_ROOT, project_version
 from ..version import CORE_VERSION
 from .api import CoreAPI
 from .checkpoints import CheckpointService
@@ -63,6 +63,23 @@ class SystemCore:
         # Импорт здесь: слой обновления стоит над ядром и зависит от него.
         from ..update.service import UpdateService
 
+        self.api = CoreAPI(self)
+
+        from ..modules.runtime import ModuleRuntime
+
+        configured_modules_root = Path(
+            str(self.config.get("modules.root", "modules"))
+        )
+        if not configured_modules_root.is_absolute():
+            configured_modules_root = PROJECT_ROOT / configured_modules_root
+        self.modules = ModuleRuntime(
+            self.db,
+            self.api,
+            modules_root=configured_modules_root.resolve(strict=False),
+            module_data_dir=MODULE_DATA_DIR,
+            enabled=bool(self.config.get("modules.enabled", True)),
+        )
+
         self.update = UpdateService(
             self.db,
             publish=lambda event_type, payload: self.events.publish(
@@ -78,12 +95,12 @@ class SystemCore:
             self.jobs,
             self.checkpoints,
             self.recovery,
+            self.modules,
             self.update,
         ):
             self.registry.register(service)
 
         self.health = HealthMonitor(self.registry)
-        self.api = CoreAPI(self)
         self._running = False
         self._lock = RLock()
 
@@ -143,6 +160,7 @@ class SystemCore:
             "schema_version": self.db.schema_version(),
             "health": self.health.snapshot(),
             "recoverable_tasks": len(self.recovery.pending()),
+            "modules": self.modules.snapshot(),
             # quick_check читает всю базу — только по запросу, не на каждый polling.
             "database_check": self.db.quick_check() if deep else "not_checked",
         }

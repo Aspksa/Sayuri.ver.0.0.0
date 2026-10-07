@@ -176,6 +176,13 @@ class GitClient:
         result = self.run("show", f"{ref}:{path}")
         return result.stdout if result.ok else None
 
+    def list_files(self, ref: str, prefix: str = "") -> list[str]:
+        args = ["ls-tree", "-r", "--name-only", ref]
+        if prefix:
+            args.extend(["--", prefix])
+        output = self.require(*args)
+        return [line.strip() for line in output.splitlines() if line.strip()]
+
     # --- изменяющие операции ----------------------------------------
 
     def merge_fast_forward(self, ref: str) -> None:
