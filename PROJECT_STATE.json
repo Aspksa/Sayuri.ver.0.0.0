@@ -2,11 +2,11 @@
   "schema_version": 1,
   "project": "Sayuri Yukishiro",
   "repository": "Aspksa/Sayuri.ver.0.0.0",
-  "version": "0.2.1",
-  "development_version": "0.3.0",
+  "version": "0.3.0",
+  "development_version": "0.4.0",
   "core_version": "0.1.0",
   "stage": "update-service",
-  "status": "in_progress",
+  "status": "completed",
   "entry_point": "Sayuri Yukishiro.bat -> scripts/launcher.ps1 -> background core + scripts/tray.ps1",
   "platform": {
     "primary": "Windows",
@@ -38,9 +38,10 @@
       "event_bus",
       "job_manager",
       "checkpoints",
-      "recovery"
+      "recovery",
+      "update"
     ],
-    "database_schema": 3,
+    "database_schema": 4,
     "api": "CoreAPI",
     "startup_policy": "services start in registration order; failed startup rolls back every started service",
     "shutdown_policy": "reverse order; runtime endpoint and session row are always cleaned up",
@@ -54,7 +55,9 @@
     "single_instance_per_media": true,
     "web_root_traversal_blocked": true,
     "no_module_privileges_yet": true,
-    "no_orphan_background_core": true
+    "no_orphan_background_core": true,
+    "update_cannot_overwrite_local_work": true,
+    "update_rolls_back_on_failed_verification": true
   },
   "api": [
     "/api/health",
@@ -82,7 +85,7 @@
     "rule": "Every released project change increments the project version.",
     "module_versions": "Each module owns an independent SemVer version."
   },
-  "next_action": "v0.3.0 Update service: implement a safe fast-forward GitHub update driven from the web UI, with component inventory, pre-update checks, backup, staged progress, post-update verification with rollback, structured history and before/after visualisation.",
+  "next_action": "v0.4.0 Module Runtime: implement module.json manifests, discovery, dependency graph, permissions, per-module database migrations, health checks and controlled startup/shutdown; include module versions in the update inventory.",
   "console": {
     "glyph_sets": [
       "unicode",
@@ -128,5 +131,55 @@
       "stale endpoint.json -> cleared by pid liveness check"
     ],
     "disable": "-NoTray switch or SAYURI_TRAY=0"
+  },
+  "update_service": {
+    "version": "0.3.0",
+    "package": "src/sayuri_yukishiro/update/",
+    "documentation": "docs/UPDATE_SERVICE.md",
+    "driven_from": "web UI section «Обновление проекта»",
+    "source": "configured upstream of the current branch, never a hardcoded origin/main",
+    "merge_policy": "fast-forward only; diverged history is refused",
+    "stages": [
+      "checks",
+      "backup",
+      "fetch",
+      "apply",
+      "verify",
+      "done"
+    ],
+    "backup": "VERSION, PROJECT_STATE.json, UPDATE_IDS.json, UPDATE_LOG.md and the core database via sqlite backup; last 5 kept",
+    "verification": "protocol validator, compileall and unittest in a separate process",
+    "rollback": "reset to the recorded commit plus database restore from the backup",
+    "double_check": "the source is re-verified before installation; if it moved, installation is refused",
+    "components_tracked": [
+      "project",
+      "core",
+      "database",
+      "protocol",
+      "web",
+      "launcher",
+      "tray",
+      "entry"
+    ],
+    "history_source": "UPDATE_LOG.md plus the update_runs table",
+    "api": [
+      "/api/session",
+      "/api/update",
+      "/api/update/plan",
+      "/api/update/progress",
+      "/api/update/history",
+      "/api/update/check",
+      "/api/update/apply"
+    ],
+    "token_required": [
+      "/api/update/check",
+      "/api/update/apply",
+      "/api/shutdown"
+    ],
+    "does_not": [
+      "restart the core by itself",
+      "update a downloaded ZIP copy",
+      "merge diverged history"
+    ]
   }
 }
