@@ -64,7 +64,7 @@ jobs:
               $errors | ForEach-Object { Write-Error $_.Message }
               $failed = $true
             } else {
-              Write-Host "$script: синтаксис корректен"
+              Write-Host "${script}: синтаксис корректен"
             }
           }
           if ($failed) { exit 1 }
