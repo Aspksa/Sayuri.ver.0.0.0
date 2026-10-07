@@ -60,7 +60,7 @@ jobs:
               [ref]$errors
             ) | Out-Null
             if ($errors.Count -gt 0) {
-              Write-Host "$script: ошибки разбора" -ForegroundColor Red
+              Write-Host "${script}: ошибки разбора" -ForegroundColor Red
               $errors | ForEach-Object { Write-Error $_.Message }
               $failed = $true
             } else {
