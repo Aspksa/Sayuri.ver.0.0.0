@@ -60,6 +60,15 @@ class SystemCore:
             self.events,
             enabled=bool(self.config.get("core.recovery_enabled", True)),
         )
+        # Импорт здесь: слой обновления стоит над ядром и зависит от него.
+        from ..update.service import UpdateService
+
+        self.update = UpdateService(
+            self.db,
+            publish=lambda event_type, payload: self.events.publish(
+                event_type, payload, source="update"
+            ),
+        )
 
         self.registry = ServiceRegistry(self.db)
         for service in (
@@ -69,6 +78,7 @@ class SystemCore:
             self.jobs,
             self.checkpoints,
             self.recovery,
+            self.update,
         ):
             self.registry.register(service)
 

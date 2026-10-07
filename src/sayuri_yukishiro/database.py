@@ -150,6 +150,32 @@ MIGRATIONS: tuple[Migration, ...] = (
     ),
 )
 
+MIGRATIONS = MIGRATIONS + (
+    Migration(
+        version=4,
+        description="update runs journal",
+        statements=(
+            """
+            CREATE TABLE IF NOT EXISTS update_runs (
+                id TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                from_commit TEXT NOT NULL,
+                to_commit TEXT NOT NULL,
+                from_version TEXT NOT NULL,
+                to_version TEXT NOT NULL,
+                stages_json TEXT,
+                error TEXT,
+                rolled_back INTEGER NOT NULL DEFAULT 0,
+                backup_id TEXT,
+                started_at TEXT NOT NULL,
+                finished_at TEXT
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_update_runs_started ON update_runs(started_at)",
+        ),
+    ),
+)
+
 SCHEMA_VERSION = MIGRATIONS[-1].version
 
 
@@ -469,6 +495,78 @@ class CoreDatabase:
                 (safe_limit,),
             ).fetchall()
             return [dict(row) for row in rows]
+
+
+    # --- журнал обновлений ------------------------------------------
+
+    def create_update_run(
+        self,
+        run_id: str,
+        *,
+        from_commit: str,
+        to_commit: str,
+        from_version: str,
+        to_version: str,
+    ) -> None:
+        with self.session() as conn:
+            conn.execute(
+                """
+                INSERT INTO update_runs(
+                    id, status, from_commit, to_commit,
+                    from_version, to_version, started_at
+                )
+                VALUES(?, 'running', ?, ?, ?, ?, ?)
+                """,
+                (run_id, from_commit, to_commit, from_version, to_version, utc_now()),
+            )
+
+    def finish_update_run(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        stages: list[dict[str, Any]] | None = None,
+        error: str = "",
+        rolled_back: bool = False,
+        backup_id: str = "",
+    ) -> None:
+        with self.session() as conn:
+            conn.execute(
+                """
+                UPDATE update_runs
+                SET status=?, stages_json=?, error=?, rolled_back=?, backup_id=?, finished_at=?
+                WHERE id=?
+                """,
+                (
+                    status,
+                    json_text(stages or []),
+                    error or None,
+                    1 if rolled_back else 0,
+                    backup_id or None,
+                    utc_now(),
+                    run_id,
+                ),
+            )
+
+    def list_update_runs(self, limit: int = 20) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(100, int(limit)))
+        with self.session() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, status, from_commit, to_commit, from_version, to_version,
+                       stages_json, error, rolled_back, backup_id, started_at, finished_at
+                FROM update_runs ORDER BY started_at DESC LIMIT ?
+                """,
+                (safe_limit,),
+            ).fetchall()
+            result: list[dict[str, Any]] = []
+            for row in rows:
+                item = dict(row)
+                raw = item.pop("stages_json")
+                item["stages"] = json.loads(raw) if raw else []
+                item["rolled_back"] = bool(item["rolled_back"])
+                result.append(item)
+            return result
 
 
 def module_database_path(module_id: str) -> Path:

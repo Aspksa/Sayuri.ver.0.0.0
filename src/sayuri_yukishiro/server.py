@@ -30,7 +30,7 @@ from .paths import DATA_DIR, WEB_DIR, project_version
 from .storage_policy import describe_media
 from .version import DEFAULT_HOST, DEFAULT_PORT, SERVER_PRODUCT
 
-SHUTDOWN_HEADER = "X-Sayuri-Token"
+TOKEN_HEADER = "X-Sayuri-Token"
 LOCAL_CLIENTS = frozenset({"127.0.0.1", "::1"})
 
 
@@ -188,6 +188,44 @@ class SayuriHandler(BaseHTTPRequestHandler):
             self._json({"modules": core.db.list_modules()})
             return
 
+        if path == "/api/session":
+            # Токен отдаётся только локальному клиенту и только для
+            # same-origin запроса: ответ без CORS-заголовков браузер не даст
+            # прочитать чужой странице, а изменяющий вызов с собственным
+            # заголовком требует preflight, который тоже не пройдёт.
+            # Локальный процесс и так может прочитать endpoint.json.
+            if self.client_address[0] not in LOCAL_CLIENTS:
+                self._json({"status": "forbidden"}, HTTPStatus.FORBIDDEN)
+                return
+            self._json(
+                {
+                    "token": self.app.token,
+                    "token_required_for": ["/api/shutdown", "/api/update/check", "/api/update/apply"],
+                    "header": TOKEN_HEADER,
+                }
+            )
+            return
+
+        if path == "/api/update":
+            self._json(core.update.status())
+            return
+
+        if path == "/api/update/plan":
+            plan = core.update.plan()
+            if plan is None:
+                self._json({"plan": None, "hint": "выполните проверку обновления"})
+                return
+            self._json(plan)
+            return
+
+        if path == "/api/update/progress":
+            self._json(core.update.progress())
+            return
+
+        if path == "/api/update/history":
+            self._json(core.update.history())
+            return
+
         if path == "/api/system":
             deep = core.status(deep=True)
             self._json(
@@ -217,29 +255,95 @@ class SayuriHandler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:
         self.do_GET()
 
-    def do_POST(self) -> None:
-        path = urlparse(self.path).path
-        if path != "/api/shutdown":
-            self.send_error(HTTPStatus.NOT_FOUND)
-            return
-        if not self._local_only():
-            return
+    def _authorized(self) -> bool:
+        """Изменяющий вызов: только локальный клиент и только с токеном.
 
+        Иначе любая страница в браузере или любой процесс на машине мог бы
+        запустить обновление или остановить систему.
+        """
+
+        if not self._local_only():
+            return False
         expected = self.app.token
-        supplied = self.headers.get(SHUTDOWN_HEADER, "")
+        supplied = self.headers.get(TOKEN_HEADER, "")
         if not expected:
             self._json({"status": "disabled"}, HTTPStatus.SERVICE_UNAVAILABLE)
-            return
+            return False
         if not supplied or not secrets.compare_digest(supplied, expected):
             self._json({"status": "forbidden"}, HTTPStatus.FORBIDDEN)
+            return False
+        return True
+
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+        core = self.app.core
+
+        if path not in {
+            "/api/shutdown",
+            "/api/update/check",
+            "/api/update/apply",
+        }:
+            self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        self._json({"status": "shutting_down"})
-        threading.Thread(
-            target=self.app.shutdown,
-            name="sayuri-shutdown",
-            daemon=True,
-        ).start()
+        if not self._authorized():
+            return
+
+        if path == "/api/shutdown":
+            self._json({"status": "shutting_down"})
+            threading.Thread(
+                target=self.app.shutdown,
+                name="sayuri-shutdown",
+                daemon=True,
+            ).start()
+            return
+
+        if path == "/api/update/check":
+            try:
+                self._json(core.update.check())
+            except Exception as exc:
+                self._json(
+                    {"status": "error", "error": str(exc)},
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
+            return
+
+        if path == "/api/update/apply":
+            body = self._read_json()
+            plan_id = body.get("plan_id") if isinstance(body, dict) else None
+            try:
+                # Возможность установки проверяется здесь, синхронно: отказ
+                # внутри фоновой задачи дал бы ответ «началось» на запрос,
+                # который начаться не мог.
+                plan = core.update.ensure_can_apply(plan_id)
+            except Exception as exc:
+                self._json({"status": "error", "error": str(exc)}, HTTPStatus.CONFLICT)
+                return
+
+            # Установка идёт фоновой задачей ядра: HTTP-запрос не должен
+            # висеть минутами, а интерфейс следит через /api/update/progress.
+            job_id = core.api.submit_job("update.apply", core.update.apply, plan_id=plan_id)
+            self._json(
+                {
+                    "status": "started",
+                    "job_id": job_id,
+                    "from_version": plan["from_version"],
+                    "to_version": plan["to_version"],
+                }
+            )
+            return
+
+    def _read_json(self) -> dict[str, Any] | None:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            return None
+        if length <= 0 or length > 64 * 1024:
+            return None
+        try:
+            return json.loads(self.rfile.read(length).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return None
 
     def log_message(self, format: str, *args: Any) -> None:
         return

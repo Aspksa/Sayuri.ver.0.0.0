@@ -6,211 +6,822 @@
 <title>Sayuri Yukishiro</title>
 <style>
   :root {
-    --bg: #0f1116;
-    --panel: #171a21;
-    --line: #262b35;
-    --text: #eef1f5;
-    --muted: #949daa;
-    --ok: #74e39b;
-    --warn: #f3c969;
-    --bad: #f27d7d;
+    --bg: #0e1015;
+    --panel: #161922;
+    --panel-2: #1c202b;
+    --line: #262b38;
+    --line-soft: #1f2430;
+    --text: #eef1f6;
+    --muted: #8d96a6;
+    --ok: #5fd99a;
+    --warn: #f0c05a;
+    --bad: #f07a7a;
+    --accent: #6b7dfb;
+    --accent-soft: rgba(107, 125, 251, .14);
     color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f6f9; --panel: #fff; --panel-2: #f8f9fb; --line: #e2e5ec; --line-soft: #edeff3;
+      --text: #12151b; --muted: #636b79; --ok: #15804a; --warn: #936200; --bad: #bb2d2d;
+      --accent: #4254d8; --accent-soft: rgba(66, 84, 216, .10);
+      color-scheme: light;
+    }
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0;
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
     font: 15px/1.55 Inter, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  main { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 44px 0 64px; }
-  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-  h1 { margin: 0; font-size: clamp(28px, 5vw, 46px); letter-spacing: -0.035em; }
-  .tagline { color: var(--muted); margin-top: 6px; }
-  .state { display: inline-flex; align-items: center; gap: 9px; font-weight: 500; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 14px currentColor; }
-  .state.ok { color: var(--ok); }
-  .state.warn { color: var(--warn); }
-  .state.bad { color: var(--bad); }
-  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-top: 26px; }
+  main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 40px 0 72px; }
+
+  /* шапка */
+  .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: clamp(26px, 4.4vw, 40px); letter-spacing: -.035em; }
+  .sub { color: var(--muted); margin-top: 4px; font-size: 14px; }
+  .live { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+  .live.ok { color: var(--ok); } .live.warn { color: var(--warn); } .live.bad { color: var(--bad); }
+
+  /* вкладки */
+  .tabs { display: flex; gap: 4px; margin: 26px 0 20px; border-bottom: 1px solid var(--line); }
+  .tab {
+    appearance: none; background: none; border: 0; color: var(--muted); cursor: pointer;
+    font: inherit; font-weight: 500; padding: 10px 16px; border-radius: 10px 10px 0 0;
+    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+  .tab .count {
+    font-size: 12px; background: var(--accent-soft); color: var(--accent);
+    border-radius: 999px; padding: 1px 7px; margin-left: 7px; font-variant-numeric: tabular-nums;
+  }
+  .page[hidden] { display: none; }
+
+  /* карточки */
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
-  .card h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-  .label { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
-  .value { font-size: 21px; margin-top: 6px; word-break: break-word; }
-  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; word-break: break-all; }
-  .wide { grid-column: 1 / -1; }
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
-  .row:first-of-type { border-top: 0; }
-  .row strong { font-weight: 600; }
-  .row .meta { color: var(--muted); font-size: 13px; }
-  .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #212734; color: #cbd5e3; white-space: nowrap; }
-  .pill.ok { background: rgba(116,227,155,.14); color: var(--ok); }
-  .pill.bad { background: rgba(242,125,125,.14); color: var(--bad); }
-  .empty { color: var(--muted); font-size: 14px; }
-  footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg: #f6f7f9; --panel: #fff; --line: #e3e6eb; --text: #14171c; --muted: #68707c;
-      --ok: #1b8a4b; --warn: #a06a00; --bad: #c0392b;
-      color-scheme: light;
-    }
-    :root:not([data-theme="dark"]) .pill { background: #eef1f5; color: #3d4450; }
+  .card.wide { grid-column: 1 / -1; }
+  .card h2 {
+    margin: 0 0 14px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
   }
+  .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .value { font-size: 20px; margin-top: 6px; word-break: break-word; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; word-break: break-all; }
+
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+  .row:first-child { border-top: 0; }
+  .row .meta { color: var(--muted); font-size: 12.5px; }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); white-space: nowrap; border: 1px solid var(--line-soft); }
+  .pill.ok { background: rgba(95,217,154,.13); color: var(--ok); border-color: transparent; }
+  .pill.bad { background: rgba(240,122,122,.13); color: var(--bad); border-color: transparent; }
+  .pill.warn { background: rgba(240,192,90,.14); color: var(--warn); border-color: transparent; }
+  .pill.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 6px 0; }
+
+  /* кнопки */
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+    font: inherit; font-weight: 500; padding: 10px 18px; border-radius: 11px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 9px; transition: background .15s, border-color .15s, transform .08s;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor;
+    border-top-color: transparent; animation: spin .7s linear infinite; flex: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* значки состояния */
+  .mark {
+    width: 20px; height: 20px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .mark.ok { background: rgba(95,217,154,.16); color: var(--ok); }
+  .mark.warn { background: rgba(240,192,90,.18); color: var(--warn); }
+  .mark.bad { background: rgba(240,122,122,.16); color: var(--bad); }
+  .mark.wait { background: var(--panel-2); color: var(--muted); }
+  .mark.run { background: var(--accent-soft); color: var(--accent); }
+
+  /* список проверок */
+  .checks { display: flex; flex-direction: column; }
+  .check {
+    display: flex; gap: 12px; align-items: flex-start; padding: 11px 0;
+    border-top: 1px solid var(--line-soft);
+    animation: reveal .32s ease both;
+  }
+  .check:first-child { border-top: 0; }
+  @keyframes reveal { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+  .check .title { font-weight: 500; }
+  .check .detail { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .check .fix { color: var(--warn); font-size: 13px; margin-top: 4px; }
+
+  /* было -> стало */
+  .hero {
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+    background: linear-gradient(135deg, var(--accent-soft), transparent 70%);
+    border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px;
+  }
+  .hero .side { display: flex; flex-direction: column; gap: 4px; }
+  .hero .ver { font-size: clamp(24px, 4vw, 34px); font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .hero .arrow { font-size: 26px; color: var(--accent); animation: nudge 1.6s ease-in-out infinite; }
+  @keyframes nudge { 0%,100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+  .hero .facts { margin-left: auto; display: flex; gap: 24px; flex-wrap: wrap; }
+  .hero .fact .n { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .diff { display: flex; flex-direction: column; }
+  .diff-row {
+    display: grid; grid-template-columns: 1fr auto auto auto; gap: 14px; align-items: center;
+    padding: 11px 0; border-top: 1px solid var(--line-soft);
+  }
+  .diff-row:first-child { border-top: 0; }
+  .diff-row.changed { background: linear-gradient(90deg, var(--accent-soft), transparent 55%); margin: 0 -10px; padding: 11px 10px; border-radius: 10px; }
+  .diff-row .was { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--bad); }
+  .diff-row .to { color: var(--accent); font-size: 15px; }
+  .diff-row .now { font-weight: 500; }
+
+  /* стадии установки */
+  .bar { height: 7px; border-radius: 999px; background: var(--panel-2); overflow: hidden; border: 1px solid var(--line-soft); }
+  .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--ok)); transition: width .5s ease; }
+  .stages { display: flex; flex-direction: column; margin-top: 16px; }
+  .stage { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; }
+  .stage .title { font-weight: 500; }
+  .stage.pending .title { color: var(--muted); }
+  .stage .detail { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  /* баннеры */
+  .banner { border-radius: 14px; padding: 16px 18px; border: 1px solid; display: flex; gap: 13px; align-items: flex-start; }
+  .banner.ok { background: rgba(95,217,154,.08); border-color: rgba(95,217,154,.3); }
+  .banner.warn { background: rgba(240,192,90,.08); border-color: rgba(240,192,90,.32); }
+  .banner.bad { background: rgba(240,122,122,.08); border-color: rgba(240,122,122,.3); }
+  .banner.info { background: var(--accent-soft); border-color: rgba(107,125,251,.3); }
+  .banner .t { font-weight: 600; }
+  .banner .d { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+
+  /* таймлайн истории */
+  .timeline { position: relative; padding-left: 26px; }
+  .timeline::before { content: ""; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .tl-item { position: relative; padding: 0 0 22px; }
+  .tl-item::before {
+    content: ""; position: absolute; left: -23px; top: 7px; width: 10px; height: 10px;
+    border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--bg);
+  }
+  .tl-item.done::before { background: var(--ok); }
+  .tl-item.progress::before { background: var(--warn); }
+  .tl-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .tl-head .v { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+  .tl-body { margin-top: 10px; }
+  .group { margin-top: 12px; }
+  .group .gt { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .change { display: flex; gap: 10px; padding: 5px 0; align-items: flex-start; font-size: 14px; }
+  .idtag {
+    font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; padding: 2px 7px;
+    border-radius: 6px; background: var(--panel-2); color: var(--muted); flex: none; border: 1px solid var(--line-soft);
+  }
+  .idtag.FEAT { color: var(--ok); } .idtag.FIX { color: var(--bad); }
+  .idtag.IMP { color: var(--accent); } .idtag.ARCH { color: var(--warn); }
+  details > summary { cursor: pointer; color: var(--muted); font-size: 13.5px; padding: 6px 0; }
+  details > summary:hover { color: var(--text); }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 12.5px; }
 </style>
 </head>
 <body>
 <main>
-  <header>
+  <div class="top">
     <div>
       <h1>Sayuri Yukishiro</h1>
-      <div class="tagline">Переносимая персональная платформа</div>
+      <div class="sub" id="subtitle">Переносимая персональная платформа</div>
     </div>
-    <div class="state warn" id="state"><span class="dot"></span><span id="stateText">Соединение…</span></div>
-  </header>
+    <div class="live warn" id="live"><span class="dot"></span><span id="liveText">Соединение…</span></div>
+  </div>
 
-  <section class="grid">
-    <article class="card">
-      <div class="label">Версия</div>
-      <div class="value" id="version">—</div>
-      <div class="hint" id="coreVersion"></div>
-    </article>
-    <article class="card">
-      <div class="label">Службы ядра</div>
-      <div class="value" id="services">—</div>
-      <div class="hint" id="coreHealth"></div>
-    </article>
-    <article class="card">
-      <div class="label">База ядра</div>
-      <div class="value" id="dbcheck">—</div>
-      <div class="hint" id="dbpath"></div>
-    </article>
-    <article class="card">
-      <div class="label">Носитель</div>
-      <div class="value" id="media">—</div>
-      <div class="hint" id="dataDir"></div>
-    </article>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-page="state">Состояние</button>
+    <button class="tab" role="tab" aria-selected="false" data-page="update">Обновление проекта<span class="count" id="updateBadge" hidden></span></button>
+    <button class="tab" role="tab" aria-selected="false" data-page="history">История<span class="count" id="historyBadge" hidden></span></button>
+  </nav>
+
+  <!-- СОСТОЯНИЕ -->
+  <section class="page" id="page-state">
+    <div class="grid">
+      <article class="card">
+        <div class="label">Версия</div>
+        <div class="value" id="sVersion">—</div>
+        <div class="hint" id="sCore"></div>
+      </article>
+      <article class="card">
+        <div class="label">Службы ядра</div>
+        <div class="value" id="sServices">—</div>
+        <div class="hint" id="sHealth"></div>
+      </article>
+      <article class="card">
+        <div class="label">База ядра</div>
+        <div class="value" id="sDb">—</div>
+        <div class="hint" id="sDbPath"></div>
+      </article>
+      <article class="card">
+        <div class="label">Носитель</div>
+        <div class="value" id="sMedia">—</div>
+        <div class="hint" id="sData"></div>
+      </article>
+      <article class="card wide">
+        <h2>Службы</h2>
+        <div id="sServiceList"><div class="empty">Загрузка…</div></div>
+      </article>
+      <article class="card">
+        <h2>Модули</h2>
+        <div id="sModules"><div class="empty">Загрузка…</div></div>
+      </article>
+      <article class="card">
+        <h2>События ядра</h2>
+        <div id="sEvents"><div class="empty">Загрузка…</div></div>
+      </article>
+    </div>
   </section>
 
-  <section class="grid">
-    <article class="card wide">
-      <h2>Службы</h2>
-      <div id="serviceList"><div class="empty">Загрузка…</div></div>
-    </article>
-    <article class="card">
-      <h2>Модули</h2>
-      <div id="moduleList"><div class="empty">Загрузка…</div></div>
-    </article>
-    <article class="card">
-      <h2>Последние события</h2>
-      <div id="eventList"><div class="empty">Загрузка…</div></div>
-    </article>
+  <!-- ОБНОВЛЕНИЕ -->
+  <section class="page" id="page-update" hidden>
+    <div class="stack">
+      <div id="uBanner"></div>
+
+      <article class="card">
+        <h2>Источник обновлений</h2>
+        <div id="uRepo"><div class="empty">Загрузка…</div></div>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="btn primary" id="btnCheck">Проверить обновление</button>
+          <button class="btn" id="btnApply" hidden>Установить обновление</button>
+          <span class="hint" id="uLastCheck"></span>
+        </div>
+      </article>
+
+      <article class="card" id="uChecksCard" hidden>
+        <h2>Проверка перед установкой</h2>
+        <div class="checks" id="uChecks"></div>
+        <div class="hint" id="uChecksSummary" style="margin-top:12px"></div>
+      </article>
+
+      <article class="card" id="uPlanCard" hidden>
+        <h2>Что изменится</h2>
+        <div class="hero" id="uHero"></div>
+        <div style="margin-top:18px">
+          <h2>Версии компонентов: было и стало</h2>
+          <div class="diff" id="uDiff"></div>
+        </div>
+        <details style="margin-top:14px">
+          <summary id="uCommitsSummary">Коммиты</summary>
+          <div id="uCommits"></div>
+        </details>
+        <details>
+          <summary id="uFilesSummary">Изменённые файлы</summary>
+          <div id="uFiles"></div>
+        </details>
+      </article>
+
+      <article class="card" id="uProgressCard" hidden>
+        <h2>Установка</h2>
+        <div class="bar"><i id="uBar"></i></div>
+        <div class="stages" id="uStages"></div>
+      </article>
+
+      <article class="card">
+        <h2>Текущие версии компонентов</h2>
+        <div class="diff" id="uComponents"><div class="empty">Загрузка…</div></div>
+      </article>
+
+      <article class="card">
+        <h2>Резервные копии</h2>
+        <div id="uBackups"><div class="empty">Загрузка…</div></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ИСТОРИЯ -->
+  <section class="page" id="page-history" hidden>
+    <div class="stack">
+      <div class="grid">
+        <article class="card">
+          <div class="label">Версий выпущено</div>
+          <div class="value" id="hVersions">—</div>
+        </article>
+        <article class="card">
+          <div class="label">Изменений зарегистрировано</div>
+          <div class="value" id="hChanges">—</div>
+        </article>
+        <article class="card">
+          <div class="label">Установок обновлений</div>
+          <div class="value" id="hRuns">—</div>
+        </article>
+      </div>
+      <article class="card" id="hRunsCard" hidden>
+        <h2>Установки на этом носителе</h2>
+        <div id="hRunList"></div>
+      </article>
+      <article class="card">
+        <h2>История версий</h2>
+        <div class="timeline" id="hTimeline"><div class="empty">Загрузка…</div></div>
+      </article>
+    </div>
   </section>
 
   <footer id="footer"></footer>
 </main>
 
 <script>
+"use strict";
 const $ = (id) => document.getElementById(id);
+const MARKS = { ok: "✓", warn: "!", bad: "✗", wait: "·", run: "" };
 
-function setState(cls, text) {
-  const node = $('state');
-  node.className = 'state ' + cls;
-  $('stateText').textContent = text;
+let TOKEN = null;
+let currentPlan = null;
+let pollTimer = null;
+let statePollTimer = null;
+
+/* --- утилиты --- */
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
-
-function rows(target, items, render) {
-  target.innerHTML = '';
-  if (!items || items.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = 'Пусто';
-    target.appendChild(empty);
-    return;
-  }
-  for (const item of items) {
-    const row = document.createElement('div');
-    row.className = 'row';
-    render(row, item);
-    target.appendChild(row);
-  }
+function mark(kind) {
+  const node = el("span", "mark " + kind);
+  if (kind === "run") node.appendChild(el("span", "spinner"));
+  else node.textContent = MARKS[kind] || "·";
+  return node;
 }
-
-function textBlock(title, meta) {
-  const wrap = document.createElement('div');
-  const strong = document.createElement('strong');
-  strong.textContent = title;
-  wrap.appendChild(strong);
-  if (meta) {
-    const small = document.createElement('div');
-    small.className = 'meta';
-    small.textContent = meta;
-    wrap.appendChild(small);
-  }
-  return wrap;
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); return node; }
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
 }
-
-function pill(text, cls) {
-  const span = document.createElement('span');
-  span.className = 'pill' + (cls ? ' ' + cls : '');
-  span.textContent = text;
-  return span;
+function plural(n, one, few, many) {
+  const h = Math.abs(n) % 100, t = Math.abs(n) % 10;
+  if (h >= 11 && h <= 14) return n + " " + many;
+  if (t === 1) return n + " " + one;
+  if (t >= 2 && t <= 4) return n + " " + few;
+  return n + " " + many;
 }
-
 async function getJson(path) {
-  const response = await fetch(path, { cache: 'no-store' });
-  if (!response.ok) throw new Error(path + ' → ' + response.status);
-  return response.json();
+  const r = await fetch(path, { cache: "no-store" });
+  if (!r.ok) throw new Error(path + " → " + r.status);
+  return r.json();
+}
+async function postJson(path, body) {
+  if (!TOKEN) throw new Error("нет токена сессии");
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { "X-Sayuri-Token": TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify(body || {})
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || (path + " → " + r.status));
+  return data;
+}
+function banner(target, kind, title, detail) {
+  const box = clear($(target));
+  const b = el("div", "banner " + kind);
+  b.appendChild(mark(kind === "info" ? "run" : kind));
+  const wrap = el("div");
+  wrap.appendChild(el("div", "t", title));
+  if (detail) wrap.appendChild(el("div", "d", detail));
+  b.appendChild(wrap);
+  box.appendChild(b);
 }
 
-async function refresh() {
+/* --- вкладки --- */
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+    document.querySelectorAll(".page").forEach((p) => { p.hidden = p.id !== "page-" + tab.dataset.page; });
+    if (tab.dataset.page === "update") loadUpdate();
+    if (tab.dataset.page === "history") loadHistory();
+  });
+});
+
+/* --- СОСТОЯНИЕ --- */
+function rows(target, items, render) {
+  const box = clear($(target));
+  if (!items || !items.length) { box.appendChild(el("div", "empty", "Пусто")); return; }
+  items.forEach((item) => {
+    const row = el("div", "row");
+    render(row, item);
+    box.appendChild(row);
+  });
+}
+function textBlock(title, meta) {
+  const w = el("div");
+  w.appendChild(el("strong", null, title));
+  if (meta) w.appendChild(el("div", "meta", meta));
+  return w;
+}
+function setLive(kind, text) {
+  $("live").className = "live " + kind;
+  $("liveText").textContent = text;
+}
+
+async function loadState() {
   try {
     const [health, system, core, modules, events] = await Promise.all([
-      getJson('/api/health'),
-      getJson('/api/system'),
-      getJson('/api/core'),
-      getJson('/api/modules'),
-      getJson('/api/core/events')
+      getJson("/api/health"), getJson("/api/system"), getJson("/api/core"),
+      getJson("/api/modules"), getJson("/api/core/events")
     ]);
+    setLive(health.status === "ok" ? "ok" : "warn",
+            health.status === "ok" ? "Система активна" : "Работает с замечаниями");
+    $("subtitle").textContent = "Переносимая персональная платформа · v" + system.version;
+    $("sVersion").textContent = "v" + system.version;
+    $("sCore").textContent = "ядро v" + system.core_version + " · схема базы v" + system.schema_version;
+    $("sServices").textContent = system.healthy_services + " / " + system.service_count;
+    $("sHealth").textContent = "состояние: " + system.core_health;
+    $("sDb").textContent = system.database_check;
+    $("sDbPath").textContent = system.database;
+    $("sMedia").textContent = system.media;
+    $("sData").textContent = system.data_dir;
 
-    setState(health.status === 'ok' ? 'ok' : 'warn',
-             health.status === 'ok' ? 'Система активна' : 'Работает с замечаниями');
-
-    $('version').textContent = 'v' + system.version;
-    $('coreVersion').textContent = 'ядро v' + system.core_version + ' · схема v' + system.schema_version;
-    $('services').textContent = system.healthy_services + ' / ' + system.service_count;
-    $('coreHealth').textContent = 'состояние: ' + system.core_health;
-    $('dbcheck').textContent = system.database_check;
-    $('dbpath').textContent = system.database;
-    $('media').textContent = system.media;
-    $('dataDir').textContent = system.data_dir;
-
-    rows($('serviceList'), core.health.services, (row, item) => {
-      row.appendChild(textBlock(item.name, item.detail || ''));
-      row.appendChild(pill(item.state, item.healthy ? 'ok' : 'bad'));
+    rows("sServiceList", core.health.services, (row, item) => {
+      row.appendChild(textBlock(item.name, item.detail || ""));
+      row.appendChild(el("span", "pill " + (item.healthy ? "ok" : "bad"), item.state));
     });
-
-    rows($('moduleList'), modules.modules, (row, item) => {
-      row.appendChild(textBlock(item.name, item.id + ' · v' + item.version));
-      row.appendChild(pill(item.status));
+    rows("sModules", modules.modules, (row, item) => {
+      row.appendChild(textBlock(item.name, item.id + " · v" + item.version));
+      row.appendChild(el("span", "pill", item.status));
     });
-
-    rows($('eventList'), events.events.slice(0, 8), (row, item) => {
-      row.appendChild(textBlock(item.event_type, item.created_at.replace('T', ' ').slice(0, 19)));
-      row.appendChild(pill(item.source));
+    rows("sEvents", events.events.slice(0, 8), (row, item) => {
+      row.appendChild(textBlock(item.event_type, when(item.created_at)));
+      row.appendChild(el("span", "pill", item.source));
     });
-
-    $('footer').textContent =
-      'Адрес ' + location.origin + ' · только этот компьютер · задач к восстановлению: ' +
-      system.recoverable_tasks;
-  } catch (error) {
-    setState('bad', 'Нет связи с ядром');
-    $('footer').textContent = String(error);
+    $("footer").textContent = "Адрес " + location.origin + " · только этот компьютер · задач к восстановлению: " + system.recoverable_tasks;
+  } catch (e) {
+    setLive("bad", "Нет связи с ядром");
+    $("footer").textContent = String(e);
   }
 }
 
-refresh();
-setInterval(refresh, 4000);
+/* --- ОБНОВЛЕНИЕ --- */
+function renderRepo(info, status) {
+  const box = clear($("uRepo"));
+  const add = (title, value, kind) => {
+    const row = el("div", "row");
+    row.appendChild(textBlock(title, ""));
+    row.appendChild(el("span", "pill" + (kind ? " " + kind : ""), value || "—"));
+    box.appendChild(row);
+  };
+  add("Git", info.git_available ? "доступен" : "не найден", info.git_available ? "ok" : "bad");
+  add("Рабочая копия", info.worktree ? "да" : "нет", info.worktree ? "ok" : "bad");
+  add("Ветка", info.branch);
+  add("Источник", info.upstream, info.upstream ? "accent" : "bad");
+  add("Текущий коммит", info.commit ? info.commit.slice(0, 12) : "—");
+  add("Свои правки", info.clean === null ? "—" : (info.clean ? "нет" : "есть"), info.clean === false ? "warn" : "ok");
+  if (info.remote) add("Репозиторий", info.remote);
+  $("uLastCheck").textContent = status.last_check ? "последняя проверка: " + when(status.last_check) : "проверка ещё не выполнялась";
+}
+
+function renderComponents(target, components) {
+  const box = clear($(target));
+  if (!components.length) { box.appendChild(el("div", "empty", "Нет данных")); return; }
+  components.forEach((c) => {
+    const row = el("div", "diff-row");
+    row.appendChild(textBlock(c.title, c.detail || c.source));
+    row.appendChild(el("span", "mono now", c.version));
+    row.appendChild(el("span", "pill", c.kind === "digest" ? "отпечаток" : c.kind));
+    row.appendChild(el("span"));
+    box.appendChild(row);
+  });
+}
+
+function renderChecks(checks, summary) {
+  $("uChecksCard").hidden = false;
+  const box = clear($("uChecks"));
+  checks.forEach((c, i) => {
+    const row = el("div", "check");
+    row.style.animationDelay = (i * 70) + "ms";
+    row.appendChild(mark(c.kind));
+    const body = el("div");
+    body.appendChild(el("div", "title", c.title));
+    body.appendChild(el("div", "detail", c.detail));
+    if (c.hint) body.appendChild(el("div", "fix", "Что делать: " + c.hint));
+    row.appendChild(body);
+    box.appendChild(row);
+  });
+  const parts = [plural(summary.passed, "проверка", "проверки", "проверок") + " пройдено"];
+  if (summary.warnings) parts.push(plural(summary.warnings, "замечание", "замечания", "замечаний"));
+  if (summary.blocking) parts.push(plural(summary.blocking, "блокирующая ошибка", "блокирующие ошибки", "блокирующих ошибок"));
+  $("uChecksSummary").textContent = parts.join(" · ");
+}
+
+function renderPlan(plan) {
+  $("uPlanCard").hidden = false;
+  const hero = clear($("uHero"));
+  const before = el("div", "side");
+  before.appendChild(el("div", "label", "Сейчас"));
+  before.appendChild(el("div", "ver", "v" + plan.from_version));
+  hero.appendChild(before);
+  hero.appendChild(el("div", "arrow", "→"));
+  const after = el("div", "side");
+  after.appendChild(el("div", "label", "Станет"));
+  const v = el("div", "ver", "v" + plan.to_version);
+  v.style.color = "var(--accent)";
+  after.appendChild(v);
+  hero.appendChild(after);
+
+  const facts = el("div", "facts");
+  const fact = (n, t) => {
+    const f = el("div", "fact");
+    f.appendChild(el("div", "n", String(n)));
+    f.appendChild(el("div", "label", t));
+    return f;
+  };
+  facts.appendChild(fact(plan.commits.length, "коммитов"));
+  facts.appendChild(fact(plan.files.length, "файлов"));
+  facts.appendChild(fact(plan.changed_components || 0, "компонентов"));
+  hero.appendChild(facts);
+
+  const diff = clear($("uDiff"));
+  plan.components.forEach((c) => {
+    const row = el("div", "diff-row" + (c.changed ? " changed" : ""));
+    row.appendChild(textBlock(c.title, c.detail || c.source));
+    row.appendChild(el("span", "mono " + (c.changed ? "was" : "now"), c.before));
+    row.appendChild(el("span", "to", c.changed ? "→" : ""));
+    row.appendChild(el("span", "mono now", c.changed ? c.after : ""));
+    diff.appendChild(row);
+  });
+
+  $("uCommitsSummary").textContent = plural(plan.commits.length, "коммит", "коммита", "коммитов");
+  const commits = clear($("uCommits"));
+  plan.commits.forEach((c) => {
+    const row = el("div", "row");
+    row.appendChild(textBlock(c.subject, c.author + " · " + when(c.date)));
+    row.appendChild(el("span", "pill mono", c.short));
+    commits.appendChild(row);
+  });
+
+  const byStatus = {};
+  plan.files.forEach((f) => { byStatus[f.label] = (byStatus[f.label] || 0) + 1; });
+  $("uFilesSummary").textContent = plural(plan.files.length, "изменённый файл", "изменённых файла", "изменённых файлов")
+    + " (" + Object.entries(byStatus).map(([k, v]) => k + ": " + v).join(", ") + ")";
+  const files = clear($("uFiles"));
+  plan.files.forEach((f) => {
+    const row = el("div", "row");
+    row.appendChild(el("span", "mono", f.path));
+    row.appendChild(el("span", "pill " + (f.status === "D" ? "bad" : f.status === "A" ? "ok" : ""), f.label));
+    files.appendChild(row);
+  });
+}
+
+function renderProgress(progress) {
+  $("uProgressCard").hidden = false;
+  $("uBar").style.width = progress.percent + "%";
+  const box = clear($("uStages"));
+  const kindOf = (state) => state === "done" ? "ok" : state === "failed" ? "bad"
+    : state === "running" ? "run" : state === "skipped" ? "warn" : "wait";
+  progress.stages.forEach((s) => {
+    const row = el("div", "stage " + (s.state === "pending" ? "pending" : ""));
+    row.appendChild(mark(kindOf(s.state)));
+    const body = el("div");
+    body.appendChild(el("div", "title", s.title));
+    if (s.detail) body.appendChild(el("div", "detail", s.detail));
+    row.appendChild(body);
+    box.appendChild(row);
+  });
+}
+
+function applyPlanState(status) {
+  const plan = status.plan;
+  const progress = status.progress;
+  currentPlan = plan;
+
+  if (progress && progress.status !== "idle") {
+    renderProgress(progress);
+    if (progress.status === "running") {
+      banner("uBanner", "info", "Идёт установка обновления", "Не закрывайте систему до завершения.");
+      $("btnApply").hidden = true;
+      $("btnCheck").disabled = true;
+      startProgressPoll();
+      return;
+    }
+    stopProgressPoll();
+    $("btnCheck").disabled = false;
+    if (progress.status === "completed") {
+      banner("uBanner", "ok", "Обновление установлено: v" + progress.to_version,
+             progress.message || "Перезапустите систему, чтобы изменения вступили в силу.");
+      $("btnApply").hidden = true;
+      return;
+    }
+    if (progress.status === "rolled_back") {
+      banner("uBanner", "warn", "Обновление отменено, проект работает как раньше",
+             (progress.error || "") + ". " + (progress.message || ""));
+      $("btnApply").hidden = true;
+      return;
+    }
+    if (progress.status === "blocked" || progress.status === "failed") {
+      banner("uBanner", "bad", "Обновление не выполнено", progress.error || "");
+      $("btnApply").hidden = true;
+      return;
+    }
+  }
+
+  if (!plan) {
+    banner("uBanner", "info", "Нажмите «Проверить обновление»",
+           "Проверка только читает репозиторий и ничего не меняет.");
+    $("btnApply").hidden = true;
+    return;
+  }
+
+  renderChecks(plan.checks, plan.checks_summary);
+  if (!plan.ready) {
+    banner("uBanner", "bad", "Обновление пока невозможно", plan.reason_text || plan.reason);
+    $("btnApply").hidden = true;
+    $("uPlanCard").hidden = true;
+    return;
+  }
+  if (!plan.update_available) {
+    const text = plan.reason === "up_to_date"
+      ? "Установлена последняя версия: v" + plan.from_version
+      : (plan.reason_text || plan.reason);
+    banner("uBanner", plan.reason === "up_to_date" ? "ok" : "warn",
+           plan.reason === "up_to_date" ? "Обновлений нет" : "Автоматическое обновление недоступно", text);
+    $("btnApply").hidden = true;
+    $("uPlanCard").hidden = true;
+    return;
+  }
+
+  banner("uBanner", "info", "Доступно обновление: v" + plan.from_version + " → v" + plan.to_version,
+         "Перед установкой будет сделана резервная копия, после установки — проверка. "
+         + "Если проверка не пройдёт, проект вернётся в текущее состояние.");
+  renderPlan(plan);
+  $("btnApply").hidden = false;
+  $("updateBadge").hidden = false;
+  $("updateBadge").textContent = "1";
+}
+
+async function loadUpdate() {
+  try {
+    const status = await getJson("/api/update");
+    renderRepo(status.repository, status);
+    renderComponents("uComponents", status.components);
+    rows("uBackups", status.backups, (row, item) => {
+      row.appendChild(textBlock("v" + item.project_version + " · " + item.commit.slice(0, 12),
+                                when(item.created_at) + " · " + Math.round(item.size_bytes / 1024) + " КБ"));
+      row.appendChild(el("span", "pill" + (item.database ? " ok" : ""), item.database ? "с базой" : "файлы"));
+    });
+    applyPlanState(status);
+  } catch (e) {
+    banner("uBanner", "bad", "Не удалось получить состояние обновления", String(e));
+  }
+}
+
+function startProgressPoll() {
+  if (pollTimer) return;
+  pollTimer = setInterval(async () => {
+    try {
+      const progress = await getJson("/api/update/progress");
+      renderProgress(progress);
+      if (progress.status !== "running") { stopProgressPoll(); loadUpdate(); }
+    } catch (e) { stopProgressPoll(); }
+  }, 800);
+}
+function stopProgressPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+$("btnCheck").addEventListener("click", async () => {
+  const btn = $("btnCheck");
+  btn.disabled = true;
+  const label = btn.textContent;
+  clear(btn);
+  btn.appendChild(el("span", "spinner"));
+  btn.appendChild(el("span", null, "Проверяем…"));
+  banner("uBanner", "info", "Проверяем обновление", "Читаем репозиторий и сравниваем версии.");
+  try {
+    await postJson("/api/update/check");
+    await loadUpdate();
+  } catch (e) {
+    banner("uBanner", "bad", "Проверка не удалась", String(e));
+  } finally {
+    clear(btn);
+    btn.textContent = label;
+    btn.disabled = false;
+  }
+});
+
+$("btnApply").addEventListener("click", async () => {
+  if (!currentPlan) return;
+  const ok = confirm("Установить обновление v" + currentPlan.from_version + " → v" + currentPlan.to_version
+    + "?\n\nПеред установкой будет создана резервная копия. Если проверка после установки не пройдёт, "
+    + "проект автоматически вернётся в текущее состояние.");
+  if (!ok) return;
+  $("btnApply").disabled = true;
+  try {
+    await postJson("/api/update/apply", { plan_id: currentPlan.id });
+    banner("uBanner", "info", "Установка началась", "Следите за стадиями ниже.");
+    startProgressPoll();
+  } catch (e) {
+    banner("uBanner", "bad", "Установку не удалось запустить", String(e));
+  } finally {
+    $("btnApply").disabled = false;
+  }
+});
+
+/* --- ИСТОРИЯ --- */
+async function loadHistory() {
+  try {
+    const data = await getJson("/api/update/history");
+    $("hVersions").textContent = data.version_count;
+    $("hChanges").textContent = data.total_changes;
+    $("hRuns").textContent = (data.runs || []).length;
+    $("historyBadge").hidden = false;
+    $("historyBadge").textContent = data.version_count;
+
+    if (data.runs && data.runs.length) {
+      $("hRunsCard").hidden = false;
+      rows("hRunList", data.runs, (row, item) => {
+        row.appendChild(textBlock(
+          "v" + item.from_version + " → v" + item.to_version,
+          when(item.started_at) + (item.error ? " · " + item.error : "")
+        ));
+        const kind = item.status === "completed" ? "ok" : item.status === "rolled_back" ? "warn" : "bad";
+        row.appendChild(el("span", "pill " + kind, item.status));
+      });
+    }
+
+    const box = clear($("hTimeline"));
+    if (!data.versions.length) { box.appendChild(el("div", "empty", "История пуста")); return; }
+    data.versions.forEach((v) => {
+      const item = el("div", "tl-item " + (v.status === "completed" ? "done" : "progress"));
+      const head = el("div", "tl-head");
+      head.appendChild(el("span", "v", "v" + v.version));
+      head.appendChild(el("span", "pill " + (v.status === "completed" ? "ok" : "warn"), v.status));
+      if (v.date) head.appendChild(el("span", "meta", v.date));
+      head.appendChild(el("span", "meta", plural(v.change_count, "изменение", "изменения", "изменений")));
+      if (v.checks_passed) head.appendChild(el("span", "pill ok", "проверок пройдено: " + v.checks_passed));
+      item.appendChild(head);
+
+      const body = el("div", "tl-body");
+      v.groups.forEach((g) => {
+        const group = el("div", "group");
+        group.appendChild(el("div", "gt", g.title));
+        g.items.forEach((c) => {
+          const change = el("div", "change");
+          change.appendChild(el("span", "idtag " + c.kind, c.typed_id));
+          const text = c.text + (c.bug_ref ? " (исправляет " + c.bug_ref + ")" : "");
+          change.appendChild(el("span", null, text));
+          group.appendChild(change);
+        });
+        body.appendChild(group);
+      });
+
+      if (v.checks.length) {
+        const details = el("details");
+        details.appendChild(el("summary", null, "Проверки версии"));
+        v.checks.forEach((c) => {
+          const row = el("div", "row");
+          row.appendChild(textBlock(c.name, c.note || ""));
+          const kind = c.result === "PASS" ? "ok" : c.result === "FAIL" ? "bad" : "";
+          row.appendChild(el("span", "pill " + kind, c.result));
+        });
+        body.appendChild(details);
+      }
+      if (v.next_action) {
+        const na = el("div", "hint");
+        na.textContent = "Следующий шаг: " + v.next_action;
+        body.appendChild(na);
+      }
+      if (v.commits.length) {
+        const c = el("div", "hint mono");
+        c.textContent = "commit " + v.commits.map((s) => s.slice(0, 12)).join(", ");
+        body.appendChild(c);
+      }
+      item.appendChild(body);
+      box.appendChild(item);
+    });
+  } catch (e) {
+    clear($("hTimeline")).appendChild(el("div", "empty", "Не удалось загрузить историю: " + e));
+  }
+}
+
+/* --- старт --- */
+(async function start() {
+  try {
+    const session = await getJson("/api/session");
+    TOKEN = session.token || null;
+  } catch (e) { TOKEN = null; }
+  if (!TOKEN) {
+    banner("uBanner", "warn", "Обновление через сайт недоступно",
+           "Токен сессии не выдан — изменяющие вызовы отключены. Запустите систему через «Sayuri Yukishiro.bat».");
+    $("btnCheck").disabled = true;
+  }
+  loadState();
+  statePollTimer = setInterval(loadState, 5000);
+})();
 </script>
 </body>
 </html>

@@ -185,3 +185,20 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m sayuri_yukishiro.main --preflight --format json
+
+      - name: История обновлений разбирается
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from sayuri_yukishiro.update.changelog import changelog_payload
+          payload = changelog_payload()
+          assert payload["version_count"] >= 1, "история пуста"
+          for version in payload["versions"]:
+              assert version["changes"], f"в v{version['version']} нет изменений"
+              for check in version["checks"]:
+                  assert check["result"] in {
+                      "PASS", "FAIL", "PENDING", "NOT_CONFIGURED", "NOT_APPLICABLE",
+                  }, check
+          print(f"версий: {payload['version_count']}, изменений: {payload['total_changes']}")
+          PY
