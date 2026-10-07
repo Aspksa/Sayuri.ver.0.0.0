@@ -302,6 +302,7 @@ next_action: v0.5.0 — Cognitive Foundation: provider runtime, durable reasonin
 - CHG-0072 / BUG-0008 — старый `endpoint.json` считался живым только по PID; после переиспользования PID другим Windows-процессом новый запуск мог ложно завершаться как «Sayuri уже запущена».
 - CHG-0073 / FIX-0008 -> BUG-0008 — `running_instance()` теперь подтверждает локальный `/api/health`, имя проекта и совпадение PID; неподтверждённый endpoint автоматически очищается.
 - CHG-0074 / IMP-0012 — добавлены регрессионные тесты выбранного data/runtime пути, tray DataDir и восстановления после reused PID/stale endpoint.
+- CHG-0075 / IMP-0013 — Windows Foundation Smoke дополнен реальным BAT-сценарием с вынесенным `SAYURI_DATA_DIR`: endpoint обязан появиться только в выбранном runtime, API ответить, а shutdown удалить endpoint из этого же каталога.
 
 Проверки:
 

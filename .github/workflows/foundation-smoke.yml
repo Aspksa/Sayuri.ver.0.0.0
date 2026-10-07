@@ -143,6 +143,48 @@ jobs:
             if (-not $proc.HasExited) { $proc.Kill() }
           }
 
+      - name: Запуск через BAT с вынесенным SAYURI_DATA_DIR
+        shell: pwsh
+        run: |
+          $relocated = Join-Path $env:RUNNER_TEMP "sayuri-relocated-data"
+          Remove-Item -LiteralPath $relocated -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $relocated -Force | Out-Null
+          $env:SAYURI_DATA_DIR = $relocated
+
+          $proc = Start-Process -FilePath "cmd.exe" `
+            -ArgumentList '/c', '"Sayuri Yukishiro.bat" -NoBrowser -NoTray' `
+            -PassThru -WindowStyle Hidden
+          try {
+            $endpointFile = Join-Path $relocated "runtime/endpoint.json"
+            $wrongEndpoint = "data/runtime/endpoint.json"
+            $deadline = (Get-Date).AddSeconds(90)
+            while (-not (Test-Path $endpointFile) -and (Get-Date) -lt $deadline) {
+              Start-Sleep -Milliseconds 500
+            }
+            if (-not (Test-Path $endpointFile)) {
+              throw "endpoint.json не появился в вынесенном SAYURI_DATA_DIR"
+            }
+            if (Test-Path $wrongEndpoint) {
+              throw "endpoint.json ошибочно создан в project data/runtime"
+            }
+
+            $endpoint = Get-Content $endpointFile -Raw | ConvertFrom-Json
+            $health = Invoke-RestMethod "$($endpoint.url)api/health" -TimeoutSec 20
+            if ($health.status -ne "ok") { throw "health: $($health.status)" }
+            Write-Host "Вынесенный runtime подтверждён: $endpointFile"
+
+            Invoke-RestMethod -Method Post "$($endpoint.url)api/shutdown" `
+              -Headers @{ "X-Sayuri-Token" = $endpoint.token } -TimeoutSec 20 | Out-Null
+            $proc.WaitForExit(30000) | Out-Null
+            if (Test-Path $endpointFile) {
+              throw "endpoint.json не удалён из вынесенного runtime после остановки"
+            }
+          } finally {
+            if (-not $proc.HasExited) { $proc.Kill() }
+            Remove-Item Env:SAYURI_DATA_DIR -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $relocated -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
   linux:
     name: Linux
     runs-on: ubuntu-latest
