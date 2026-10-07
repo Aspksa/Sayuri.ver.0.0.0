@@ -253,7 +253,7 @@ next_action: v0.4.0 — Module Runtime: манифест module.json, обнар
 
 Дата: 2026-10-07
 
-Статус: in_progress
+Статус: completed
 
 Изменения:
 
@@ -269,20 +269,20 @@ next_action: v0.4.0 — Module Runtime: манифест module.json, обнар
 
 Проверки:
 
-- tests: PENDING
+- tests: PASS (166 тестов)
 - lint: NOT_CONFIGURED
 - type-check: NOT_CONFIGURED
-- smoke-test: PENDING
-- protocol-validation: PENDING
-- python-compile: PENDING
-- powershell-static: PENDING
-- github-actions-windows: PENDING
-- github-actions-linux: PENDING
+- smoke-test: PASS
+- protocol-validation: PASS
+- python-compile: PASS
+- powershell-static: PASS
+- github-actions-windows: PASS (Foundation Smoke run #16)
+- github-actions-linux: PASS (Foundation Smoke run #16)
 
 Commit:
 
-PENDING
+f0d05a8c7d1483dde3aa26cb8a149c6433dc15e2
 
 Следующий шаг:
 
-next_action: проверить implementation commit v0.4.0 в Foundation Smoke на Windows и Linux; исправить найденные дефекты, затем финализировать v0.4.0 и перейти к v0.5.0 Cognitive Foundation.
+next_action: v0.5.0 — Cognitive Foundation: provider runtime, durable reasoning task context, planner/reasoning с evidence receipts и явными action boundaries поверх Module Runtime.
