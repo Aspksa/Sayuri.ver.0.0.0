@@ -202,3 +202,39 @@ Commit:
 Следующий шаг:
 
 next_action: v0.4.0 — Module Runtime: манифест module.json, обнаружение модулей, граф зависимостей, разрешения, миграции модульных БД, health и управляемый запуск/остановка; версии модулей включить в инвентарь обновления.
+
+---
+
+## v0.3.1
+
+Дата: 2026-10-07
+
+Статус: in_progress
+
+Изменения:
+
+- CHG-0048 / BUG-0001 — Windows Foundation Smoke падал до выполнения тестов: системная `charmap`-кодировка runner не могла вывести кириллицу валидатора протокола.
+- CHG-0049 / FIX-0001 -> BUG-0001 — валидатор переводит stdout/stderr в UTF-8 с безопасным fallback, а workflow явно включает UTF-8 режим Python на Windows и Linux.
+- CHG-0050 / BUG-0002 — ошибки `git status`, `git log` и `git diff` могли превращаться в пустой результат и ошибочно выглядеть как чистое/пустое состояние.
+- CHG-0051 / FIX-0002 -> BUG-0002 — критичные Git-чтения переведены в fail-closed через `require`; добавлен регрессионный тест, запрещающий маскировать ошибку Git как безопасное состояние.
+- CHG-0052 / IMP-0010 — протокол релиза усилен обязательным зелёным CI до финализации и продвижения в main; валидатор теперь сверяет VERSION, PROJECT_STATE, README и версию ARCHITECTURE, документация синхронизирована.
+
+Проверки:
+
+- tests: PENDING
+- lint: NOT_CONFIGURED
+- type-check: NOT_CONFIGURED
+- smoke-test: PENDING
+- protocol-validation: PENDING
+- python-compile: PENDING
+- powershell-static: PENDING
+- github-actions-windows: PENDING
+- github-actions-linux: PENDING
+
+Commit:
+
+PENDING
+
+Следующий шаг:
+
+next_action: проверить implementation commit v0.3.1 в GitHub Actions на Windows и Linux; при зелёном CI финализировать v0.3.1 и затем перейти к v0.4.0 Module Runtime.

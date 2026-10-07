@@ -17,6 +17,8 @@ IDS_PATH = ROOT / "UPDATE_IDS.json"
 LOG_PATH = ROOT / "UPDATE_LOG.md"
 STATE_PATH = ROOT / "PROJECT_STATE.json"
 VERSION_PATH = ROOT / "VERSION"
+README_PATH = ROOT / "README.md"
+ARCHITECTURE_PATH = ROOT / "docs" / "ARCHITECTURE.md"
 
 PREFIXES = ("CHG", "FEAT", "BUG", "FIX", "IMP", "ARCH")
 
@@ -27,6 +29,10 @@ CHANGE_LINE = re.compile(
 VERSION_HEADING = re.compile(r"^##\s+v(\d+\.\d+\.\d+)\s*$", re.MULTILINE)
 STATUS_LINE = re.compile(r"^Статус:\s*(\S+)\s*$", re.MULTILINE)
 SECTION_SPLIT = re.compile(r"(?=^##\s+v\d+\.\d+\.\d+\s*$)", re.MULTILINE)
+README_VERSION_LINE = re.compile(
+    r"\*\*Релиз:\*\*\s*v(\d+\.\d+\.\d+)\s*·\s*\*\*Ядро:\*\*\s*v[\d.]+\s*·\s*\*\*В разработке:\*\*\s*v(\d+\.\d+\.\d+)"
+)
+ARCHITECTURE_HEADING = re.compile(r"^# Архитектура Sayuri Yukishiro — v(\d+\.\d+\.\d+)\s*$", re.MULTILINE)
 
 
 class ProtocolError(AssertionError):
@@ -37,11 +43,44 @@ def fail(message: str) -> None:
     raise ProtocolError(message)
 
 
+def configure_utf8_stream(stream: object) -> None:
+    """CI и перенаправленные Windows-потоки не должны падать на кириллице."""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if not callable(reconfigure):
+        return
+    try:
+        reconfigure(encoding="utf-8", errors="backslashreplace")
+    except (OSError, ValueError):
+        pass
+
+
 def main() -> int:
     ids = json.loads(IDS_PATH.read_text(encoding="utf-8"))
     state = json.loads(STATE_PATH.read_text(encoding="utf-8"))
     log = LOG_PATH.read_text(encoding="utf-8")
     release_version = VERSION_PATH.read_text(encoding="utf-8").strip()
+    readme = README_PATH.read_text(encoding="utf-8")
+    architecture = ARCHITECTURE_PATH.read_text(encoding="utf-8")
+
+    readme_versions = README_VERSION_LINE.search(readme)
+    if not readme_versions:
+        fail("README.md не содержит строку релиза/разработки в ожидаемом формате")
+    readme_release, readme_development = readme_versions.groups()
+    if readme_release != release_version:
+        fail(f"README релиз v{readme_release}, VERSION={release_version}")
+    expected_development = str(state.get("development_version", "")).strip()
+    if readme_development != expected_development:
+        fail(
+            f"README разработка v{readme_development}, "
+            f"PROJECT_STATE.development_version={expected_development}"
+        )
+    architecture_version = ARCHITECTURE_HEADING.search(architecture)
+    if not architecture_version:
+        fail("docs/ARCHITECTURE.md не содержит версию в заголовке")
+    if architecture_version.group(1) != release_version:
+        fail(
+            f"ARCHITECTURE v{architecture_version.group(1)}, VERSION={release_version}"
+        )
 
     changes = CHANGE_LINE.findall(log)
     if not changes:
@@ -135,6 +174,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    configure_utf8_stream(sys.stdout)
+    configure_utf8_stream(sys.stderr)
     try:
         raise SystemExit(main())
     except (ProtocolError, KeyError, ValueError, json.JSONDecodeError) as exc:

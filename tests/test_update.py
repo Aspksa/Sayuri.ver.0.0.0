@@ -20,7 +20,7 @@ from sayuri_yukishiro.database import CoreDatabase, SCHEMA_VERSION
 from sayuri_yukishiro.update import backup as backup_module
 from sayuri_yukishiro.update.changelog import parse_changelog
 from sayuri_yukishiro.update.checks import blocking_failures, run_update_checks
-from sayuri_yukishiro.update.git_client import GitClient, GitError
+from sayuri_yukishiro.update.git_client import GitClient, GitError, GitResult
 from sayuri_yukishiro.update.inventory import collect_components, diff_components
 from sayuri_yukishiro.update.service import STAGE_SEQUENCE, UpdateService
 
@@ -179,6 +179,17 @@ class GitClientTests(unittest.TestCase):
             client.merge_fast_forward(target)
             with self.assertRaises(GitError):
                 client.hard_reset_to(base, expected_head="0" * 40)
+
+    def test_read_failures_are_fail_closed(self) -> None:
+        client = GitClient(Path("."))
+        failed = GitResult(("status", "--porcelain"), 128, "", "fatal: repository error")
+        with patch.object(client, "run", return_value=failed):
+            with self.assertRaises(GitError):
+                client.is_clean()
+            with self.assertRaises(GitError):
+                client.commits_between("a" * 40, "b" * 40)
+            with self.assertRaises(GitError):
+                client.changed_files("a" * 40, "b" * 40)
 
     def test_missing_git_is_reported(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

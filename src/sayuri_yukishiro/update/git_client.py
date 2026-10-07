@@ -119,10 +119,8 @@ class GitClient:
         return result.text if result.ok and result.text else None
 
     def dirty_files(self) -> list[str]:
-        result = self.run("status", "--porcelain")
-        if not result.ok:
-            return []
-        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        output = self.require("status", "--porcelain")
+        return [line.strip() for line in output.splitlines() if line.strip()]
 
     def is_clean(self) -> bool:
         return not self.dirty_files()
@@ -140,16 +138,14 @@ class GitClient:
         if base == target:
             return []
         separator = "\x1f"
-        result = self.run(
+        output = self.require(
             "log",
             f"--max-count={max(1, int(limit))}",
             f"--pretty=format:%H{separator}%h{separator}%an{separator}%aI{separator}%s",
             f"{base}..{target}",
         )
-        if not result.ok:
-            return []
         commits: list[CommitInfo] = []
-        for line in result.stdout.splitlines():
+        for line in output.splitlines():
             parts = line.split(separator)
             if len(parts) != 5:
                 continue
@@ -159,12 +155,10 @@ class GitClient:
     def changed_files(self, base: str, target: str) -> list[dict[str, str]]:
         if base == target:
             return []
-        result = self.run("diff", "--name-status", f"{base}..{target}")
-        if not result.ok:
-            return []
+        output = self.require("diff", "--name-status", f"{base}..{target}")
         statuses = {"A": "добавлен", "M": "изменён", "D": "удалён", "R": "переименован"}
         files: list[dict[str, str]] = []
-        for line in result.stdout.splitlines():
+        for line in output.splitlines():
             parts = line.split("\t")
             if len(parts) < 2:
                 continue
