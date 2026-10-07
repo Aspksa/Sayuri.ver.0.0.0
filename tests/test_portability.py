@@ -128,6 +128,15 @@ class LauncherContractTests(unittest.TestCase):
         self.batch = (self.root / "Sayuri Yukishiro.bat").read_text(encoding="utf-8")
         self.launcher = (self.root / "scripts" / "launcher.ps1").read_text(encoding="utf-8")
 
+    def test_powershell_scripts_have_utf8_bom_for_windows_powershell_51(self) -> None:
+        for name in ("launcher.ps1", "tray.ps1"):
+            with self.subTest(name):
+                data = (self.root / "scripts" / name).read_bytes()
+                self.assertTrue(
+                    data.startswith(b"\xef\xbb\xbf"),
+                    f"{name} должен иметь UTF-8 BOM для Windows PowerShell 5.1",
+                )
+
     def test_entry_point_files_exist(self) -> None:
         self.assertTrue((self.root / "Sayuri Yukishiro.bat").is_file())
         self.assertTrue((self.root / "scripts" / "launcher.ps1").is_file())

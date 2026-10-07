@@ -224,6 +224,8 @@ next_action: v0.4.0 — Module Runtime: манифест module.json, обнар
 - CHG-0056 / FIX-0004 -> BUG-0004 — интерполяция сообщения об ошибке исправлена на `${script}: ...`, чтобы PowerShell однозначно отделял имя переменной от двоеточия.
 - CHG-0057 / BUG-0005 — после первого исправления второй такой же ParserError оставался в успешной ветке syntax-check: `"$script: синтаксис корректен"`.
 - CHG-0058 / FIX-0005 -> BUG-0005 — успешное сообщение также переведено на `${script}: ...`; оба пути PowerShell syntax-check теперь синтаксически однозначны.
+- CHG-0059 / BUG-0006 — Windows PowerShell 5.1 читает UTF-8 без BOM как системную ANSI-кодировку; launcher/tray с кириллицей и Unicode-глифами превращались в mojibake и launcher не парсился при реальном запуске через `powershell.exe`.
+- CHG-0060 / FIX-0006 -> BUG-0006 — `launcher.ps1` и `tray.ps1` сохранены с UTF-8 BOM; добавлен регрессионный тест, фиксирующий требование кодировки для Windows PowerShell 5.1.
 
 Проверки:
 
